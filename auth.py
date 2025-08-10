@@ -45,14 +45,21 @@ class AuthManager:
                         st.rerun()
                     else:
                         st.error("Invalid username or passcode!")
-                        # Debug info
-                        with st.expander("Debug Info"):
-                            try:
-                                users = self.config.get_users()
-                                st.write(f"Found {len(users)} users in system")
-                                st.write("Available usernames:", list(users.keys()))
-                            except Exception as e:
-                                st.write(f"Error loading users: {e}")
+                        
+                        # Show available users for debugging (admin only)
+                        if username == "admin":
+                            with st.expander("🔧 Debug Info (Admin Only)"):
+                                try:
+                                    users = self.config.get_users()
+                                    st.write(f"System has {len(users)} users")
+                                    st.write("Available usernames:", list(users.keys()))
+                                    if "admin" in users:
+                                        st.write("✅ Admin user exists")
+                                        st.write("Check your passcode carefully")
+                                    else:
+                                        st.write("❌ Admin user not found!")
+                                except Exception as e:
+                                    st.write(f"Error checking users: {e}")
                 else:
                     st.warning("Please enter both username and passcode")
     
