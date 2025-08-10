@@ -36,30 +36,46 @@ class ConfigManager:
             f.write(str(week_num))
     
     def initialize_users(self):
-        """Initialize users file if it doesn't exist"""
+        """Initialize users file if it doesn't exist - for cloud deployment"""
         users_file = "users.json"
-        if not os.path.exists(users_file):
-            # Default users - you should modify this
-            default_users = {
-                "admin": {
-                    "passcode": "admin123",
-                    "is_admin": True,
-                    "display_name": "Administrator"
-                },
-                "user1": {
-                    "passcode": "pass1",
-                    "is_admin": False,
-                    "display_name": "User One"
-                },
-                "user2": {
-                    "passcode": "pass2", 
-                    "is_admin": False,
-                    "display_name": "User Two"
-                }
+        
+        # Always try to load existing file first
+        existing_users = self.encryption.load_encrypted_file(users_file)
+        if existing_users:
+            return existing_users
+        
+        # If no file exists or file is corrupted, create default users
+        print("Creating new users file...")
+        default_users = {
+            "admin": {
+                "passcode": "admin123",
+                "is_admin": True,
+                "display_name": "Administrator"
+            },
+            "user1": {
+                "passcode": "pass1",
+                "is_admin": False,
+                "display_name": "User One"
+            },
+            "user2": {
+                "passcode": "pass2", 
+                "is_admin": False,
+                "display_name": "User Two"
+            },
+            "user3": {
+                "passcode": "pass3", 
+                "is_admin": False,
+                "display_name": "User Three"
             }
+        }
+        
+        try:
             self.encryption.save_encrypted_file(default_users, users_file)
+            print(f"Successfully created users file with {len(default_users)} users")
             return default_users
-        return self.encryption.load_encrypted_file(users_file)
+        except Exception as e:
+            print(f"Error saving users file: {e}")
+            raise Exception(f"Failed to create users file: {e}")
     
     def get_users(self):
         """Get all users"""
