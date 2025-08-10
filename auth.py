@@ -1,63 +1,79 @@
+import streamlit as st
+import sys
 import os
-import json
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-import base64
 
-class DataEncryption:
-    def __init__(self, password: str = None):
-        """Initialize encryption with password from Streamlit secrets or parameter"""
-        if password is None:
-            try:
-                import streamlit as st
-                password = st.secrets["ENCRYPTION_KEY"]
-            except:
-                # Fallback for local development
-                password = os.getenv('ENCRYPTION_KEY', 'default_key_change_this_for_local_dev_only')
+# Ensure proper imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+class AuthManager:
+    def __init__(self):
+        # Import here to avoid circular imports
+        from config import ConfigManager
+        self.config = ConfigManager()
+    
+    def authenticate_user(self, username, passcode):
+        """Authenticate user credentials"""
+        try:
+            users = self.config.get_users()
+            if username in users and users[username]["passcode"] == passcode:
+                return {
+                    "username": username,
+                    "display_name": users[username]["display_name"],
+                    "is_admin": users[username].get("is_admin", False)
+                }
+        except Exception as e:
+            st.error(f"Authentication error: {e}")
+        return None
+    
+    def login_form(self):
+        """Display login form"""
+        st.title("🏆 Premier League Predictions League")
+        st.markdown("---")
         
-        # Generate a key from password
-        password_bytes = password.encode()
-        salt = b'salt_'  # In production, use a random salt stored securely
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=salt,
-            iterations=100000,
-        )
-        key = base64.urlsafe_b64encode(kdf.derive(password_bytes))
-        self.cipher_suite = Fernet(key)
+        with st.form("login_form"):
+            st.subheader("Login")
+            username = st.text_input("Username")
+            passcode = st.text_input("Passcode", type="password")
+            submit = st.form_submit_button("Login")
+            
+            if submit:
+                if username and passcode:
+                    user = self.authenticate_user(username, passcode)
+                    if user:
+                        st.session_state.user = user
+                        st.session_state.logged_in = True
+                        st.rerun()
+                    else:
+                        st.error("Invalid username or passcode!")
+                        # Debug info
+                        with st.expander("Debug Info"):
+                            try:
+                                users = self.config.get_users()
+                                st.write(f"Found {len(users)} users in system")
+                                st.write("Available usernames:", list(users.keys()))
+                            except Exception as e:
+                                st.write(f"Error loading users: {e}")
+                else:
+                    st.warning("Please enter both username and passcode")
     
-    def encrypt_data(self, data):
-        """Encrypt data (dict or list) and return base64 string"""
-        json_str = json.dumps(data)
-        encrypted_data = self.cipher_suite.encrypt(json_str.encode())
-        return base64.urlsafe_b64encode(encrypted_data).decode()
+    def logout(self):
+        """Logout current user"""
+        if "user" in st.session_state:
+            del st.session_state.user
+        if "logged_in" in st.session_state:
+            del st.session_state.logged_in
+        st.rerun()
     
-    def decrypt_data(self, encrypted_str):
-        """Decrypt base64 string and return original data"""
-        try:
-            encrypted_data = base64.urlsafe_b64decode(encrypted_str.encode())
-            decrypted_data = self.cipher_suite.decrypt(encrypted_data)
-            return json.loads(decrypted_data.decode())
-        except Exception as e:
-            print(f"Decryption error: {e}")
-            return None
+    def require_login(self):
+        """Check if user is logged in, redirect to login if not"""
+        if "logged_in" not in st.session_state or not st.session_state.logged_in:
+            return False
+        return True
     
-    def save_encrypted_file(self, data, filepath):
-        """Save encrypted data to file"""
-        encrypted_str = self.encrypt_data(data)
-        with open(filepath, 'w') as f:
-            f.write(encrypted_str)
+    def is_admin(self):
+        """Check if current user is admin"""
+        return (st.session_state.get("user", {}).get("is_admin", False))
     
-    def load_encrypted_file(self, filepath):
-        """Load and decrypt data from file"""
-        try:
-            with open(filepath, 'r') as f:
-                encrypted_str = f.read()
-            return self.decrypt_data(encrypted_str)
-        except FileNotFoundError:
-            return None
-        except Exception as e:
-            print(f"Error loading file {filepath}: {e}")
-            return None
+    def get_current_user(self):
+        """Get current logged in user"""
+        return st.session_state.get("user", {})
