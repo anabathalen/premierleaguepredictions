@@ -338,29 +338,38 @@ def display_leaderboard():
     df_data = []
     for i, user in enumerate(leaderboard):
         df_data.append({
-            "Position": i + 1,
+            "Pos": i + 1,
             "Player": user["display_name"],
-            "Total Points": user["total_points"],
-            "Weeks Played": user["weeks_played"],
-            "Average Points": user["average_points"]
+            "Points": user["total_points"],
+            "Weeks": user["weeks_played"],
+            "Avg": user["average_points"]
         })
     
     df = pd.DataFrame(df_data)
+    
+    # Display leaderboard with better mobile formatting
     st.dataframe(df, use_container_width=True, hide_index=True)
+    
+    # Show top 3 with medals
+    if len(leaderboard) >= 3:
+        st.markdown("### 🏆 Top 3")
+        medals = ["🥇", "🥈", "🥉"]
+        for i in range(min(3, len(leaderboard))):
+            user = leaderboard[i]
+            st.markdown(f"{medals[i]} **{user['display_name']}** - {user['total_points']} points")
     
     # Show weekly breakdown for top 3
     if len(leaderboard) > 0:
-        st.subheader("📈 Weekly Breakdown (Top 3)")
+        st.subheader("📈 Weekly Breakdown")
         
         for i, user in enumerate(leaderboard[:3]):
             with st.expander(f"{i+1}. {user['display_name']} - {user['total_points']} points"):
                 breakdown = user["weekly_breakdown"]
                 if breakdown:
-                    breakdown_df = pd.DataFrame([
-                        {"Week": k.replace("week_", ""), "Points": v} 
-                        for k, v in breakdown.items()
-                    ])
-                    st.bar_chart(breakdown_df.set_index("Week")["Points"])
+                    # Simple text breakdown instead of chart for mobile compatibility
+                    for week, points in breakdown.items():
+                        week_num = week.replace("week_", "")
+                        st.write(f"Week {week_num}: {points} points")
                 else:
                     st.write("No completed weeks yet")
 
@@ -382,12 +391,14 @@ def prediction_form(week_num, username):
         
         # Show existing predictions
         existing_predictions = data_manager.load_predictions(week_num, username)
-        st.subheader("Your Predictions:")
+        st.subheader("Your Current Predictions:")
         
         for i, (_, fixture) in enumerate(fixtures.iterrows()):
             if i < len(existing_predictions):
                 pred = existing_predictions[i]
-                st.write(f"{fixture['home_team']} {pred['home_score']}-{pred['away_score']} {fixture['away_team']}")
+                st.write(f"⚽ **{fixture['home_team']} {pred['home_score']}-{pred['away_score']} {fixture['away_team']}**")
+        
+        st.markdown("---")
         
         if st.button("Edit Predictions"):
             st.session_state.edit_predictions = True
@@ -412,21 +423,27 @@ def prediction_form(week_num, username):
         for i, (_, fixture) in enumerate(fixtures.iterrows()):
             st.markdown(f"**{fixture['home_team']} vs {fixture['away_team']}**")
             
-            col1, col2, col3 = st.columns([2, 1, 2])
-            
             # Get existing prediction if available
             existing_home = existing_predictions[i]['home_score'] if i < len(existing_predictions) else 0
             existing_away = existing_predictions[i]['away_score'] if i < len(existing_predictions) else 0
             
-            with col1:
-                st.write(fixture['home_team'])
-            with col2:
-                home_score = st.number_input(f"", min_value=0, max_value=10, 
-                                           value=existing_home, key=f"home_{i}")
-                away_score = st.number_input(f"", min_value=0, max_value=10, 
-                                           value=existing_away, key=f"away_{i}")
-            with col3:
-                st.write(fixture['away_team'])
+            # Single column layout - much safer for mobile
+            home_score = st.number_input(
+                f"{fixture['home_team']} score:", 
+                min_value=0, max_value=10, 
+                value=existing_home, 
+                key=f"home_{i}"
+            )
+            
+            away_score = st.number_input(
+                f"{fixture['away_team']} score:", 
+                min_value=0, max_value=10, 
+                value=existing_away, 
+                key=f"away_{i}"
+            )
+            
+            # Show the prediction clearly
+            st.info(f"Your prediction: {fixture['home_team']} {home_score}-{away_score} {fixture['away_team']}")
             
             predictions.append({
                 "home_team": fixture['home_team'],
