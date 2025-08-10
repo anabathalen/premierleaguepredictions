@@ -16,6 +16,19 @@ st.set_page_config(
     layout="wide"
 )
 
+# Test encryption key and show helpful error message
+try:
+    from crypto_utils import DataEncryption
+    test_encryption = DataEncryption()
+    st.success("🔑 Encryption key loaded successfully!")
+except Exception as e:
+    st.error("🔑 Encryption Key Problem!")
+    st.write("**Error:**", str(e))
+    st.write("**Solution:** Go to your Streamlit Cloud app settings → Secrets and add:")
+    st.code('ENCRYPTION_KEY = "YourSecretKeyHere"')
+    st.write("Make sure the key is at least 8 characters long!")
+    st.stop()
+
 # Initialize managers
 auth_manager = AuthManager()
 data_manager = DataManager()
@@ -25,11 +38,11 @@ config_manager = ConfigManager()
 try:
     users = config_manager.initialize_users()
     if not users:
-        st.error("Failed to initialize users. Check encryption key in secrets.")
+        st.error("No users found after initialization")
         st.stop()
+    st.success(f"✅ Loaded {len(users)} users successfully")
 except Exception as e:
-    st.error(f"Error initializing app: {e}")
-    st.info("Make sure ENCRYPTION_KEY is set in Streamlit Cloud secrets")
+    st.error(f"Error initializing users: {e}")
     st.stop()
 
 def main():
