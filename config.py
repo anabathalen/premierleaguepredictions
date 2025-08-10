@@ -1,4 +1,9 @@
 import os
+import sys
+
+# Add current directory to Python path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from crypto_utils import DataEncryption
 
 # Configuration
@@ -8,14 +13,13 @@ CURRENT_WEEK_FILE = "current_week.txt"
 
 # Points system
 POINTS_CORRECT_RESULT = 3  # Win/Draw/Loss correct
-POINTS_EXACT_SCORE = 5  # Exact score correct
-POINTS_GOAL_DIFFERENCE = 1  # Goal difference correct
-
+POINTS_EXACT_SCORE = 5     # Exact score correct
+POINTS_GOAL_DIFFERENCE = 1 # Goal difference correct
 
 class ConfigManager:
     def __init__(self):
         self.encryption = DataEncryption()
-
+        
     def get_current_week(self):
         """Get current gameweek number"""
         try:
@@ -25,12 +29,12 @@ class ConfigManager:
             # Default to week 1 if file doesn't exist
             self.set_current_week(1)
             return 1
-
+    
     def set_current_week(self, week_num):
         """Set current gameweek number (admin only)"""
         with open(CURRENT_WEEK_FILE, 'w') as f:
             f.write(str(week_num))
-
+    
     def initialize_users(self):
         """Initialize users file if it doesn't exist"""
         users_file = "users.json"
@@ -48,7 +52,7 @@ class ConfigManager:
                     "display_name": "User One"
                 },
                 "user2": {
-                    "passcode": "pass2",
+                    "passcode": "pass2", 
                     "is_admin": False,
                     "display_name": "User Two"
                 }
@@ -56,11 +60,11 @@ class ConfigManager:
             self.encryption.save_encrypted_file(default_users, users_file)
             return default_users
         return self.encryption.load_encrypted_file(users_file)
-
+    
     def get_users(self):
         """Get all users"""
         return self.encryption.load_encrypted_file("users.json") or {}
-
+    
     def add_user(self, username, passcode, display_name, is_admin=False):
         """Add a new user"""
         users = self.get_users()
