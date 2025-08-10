@@ -36,13 +36,66 @@ config_manager = ConfigManager()
 
 # Initialize users file
 try:
+    st.info("🔄 Initializing users...")
     users = config_manager.initialize_users()
+    
     if not users:
-        st.error("No users found after initialization")
+        st.error("❌ No users found after initialization")
+        
+        # Try to debug the issue
+        st.write("**Debugging the issue:**")
+        
+        # Check if file exists
+        users_file_exists = os.path.exists("users.json")
+        st.write(f"users.json file exists: {users_file_exists}")
+        
+        if users_file_exists:
+            # Try to read the raw file
+            try:
+                with open("users.json", "r") as f:
+                    file_content = f.read()
+                st.write(f"File size: {len(file_content)} characters")
+                st.write("File starts with:", file_content[:50] + "..." if len(file_content) > 50 else file_content)
+                
+                # Try to decrypt
+                from crypto_utils import DataEncryption
+                enc = DataEncryption()
+                decrypted = enc.decrypt_data(file_content)
+                if decrypted:
+                    st.write(f"✅ File decrypts successfully with {len(decrypted)} users")
+                else:
+                    st.write("❌ File exists but won't decrypt - wrong encryption key?")
+            except Exception as e:
+                st.write(f"Error reading file: {e}")
+        else:
+            st.write("File doesn't exist - trying to create it...")
+            try:
+                # Force create users
+                test_users = {
+                    "admin": {
+                        "passcode": "admin123",
+                        "is_admin": True,
+                        "display_name": "Administrator"
+                    }
+                }
+                from crypto_utils import DataEncryption
+                enc = DataEncryption()
+                enc.save_encrypted_file(test_users, "users.json")
+                st.write("✅ Created users file successfully!")
+                st.rerun()
+            except Exception as e:
+                st.write(f"❌ Failed to create users file: {e}")
+        
         st.stop()
-    st.success(f"✅ Loaded {len(users)} users successfully")
+    else:
+        st.success(f"✅ Loaded {len(users)} users successfully")
+        
 except Exception as e:
-    st.error(f"Error initializing users: {e}")
+    st.error(f"❌ Error initializing users: {e}")
+    st.write("**Common solutions:**")
+    st.write("1. Make sure ENCRYPTION_KEY is set in Streamlit Cloud app settings → Secrets")
+    st.write("2. The encryption key should be at least 8 characters long")
+    st.write("3. Try clicking the 'Reboot app' button in Streamlit Cloud")
     st.stop()
 
 def main():
@@ -87,6 +140,8 @@ def main():
             admin_panel()
             st.markdown("### User Management")
             user_management_panel()
+            st.markdown("### Scoring Test")
+            scoring_test_panel()
         
         if st.button("Logout"):
             auth_manager.logout()
@@ -163,6 +218,90 @@ def user_management_panel():
                 else:
                     st.warning("Please fill in all fields")
 
+def scoring_test_panel():
+    """Admin panel to test scoring system"""
+    with st.expander("🧮 Test Scoring System"):
+        st.write("This will show you how scoring works")
+        
+        current_week = config_manager.get_current_week()
+        
+        # Show completed weeks with results
+        completed_weeks = []
+        for week in range(1, current_week):
+            results = data_manager.load_results(week)
+            if results is not None:
+                completed_weeks.append(week)
+        
+        if completed_weeks:
+            selected_week = st.selectbox("Select week to view scores:", completed_weeks)
+            
+            if st.button("Calculate Scores for This Week"):
+                try:
+                    results = data_manager.load_results(selected_week)
+                    predictions = data_manager.load_predictions(selected_week)
+                    
+                    if results is None:
+                        st.error(f"No results file found for week {selected_week}")
+                        return
+                        
+                    if not predictions:
+                        st.warning(f"No predictions found for week {selected_week}")
+                        return
+                    
+                    st.write(f"**Week {selected_week} Results:**")
+                    st.dataframe(results)
+                    
+                    st.write(f"**User Predictions and Scores:**")
+                    
+                    for username, user_data in predictions.items():
+                        if username == "admin":  # Skip admin
+                            continue
+                            
+                        # Get display name
+                        users = config_manager.get_users()
+                        display_name = users.get(username, {}).get("display_name", username)
+                        
+                        st.write(f"**{display_name}:**")
+                        
+                        user_predictions = user_data["predictions"]
+                        total_points = 0
+                        
+                        for i, result_row in results.iterrows():
+                            if i < len(user_predictions):
+                                pred = user_predictions[i]
+                                points = data_manager.calculate_points(pred, result_row)
+                                total_points += points
+                                
+                                result_str = f"{result_row['home_team']} {result_row['home_score']}-{result_row['away_score']} {result_row['away_team']}"
+                                pred_str = f"Predicted: {pred['home_score']}-{pred['away_score']}"
+                                
+                                if points == 5:
+                                    points_str = f"**{points} points** (Exact score! 🎯)"
+                                elif points == 3:
+                                    points_str = f"**{points} points** (Correct result! ✅)"
+                                elif points == 1:
+                                    points_str = f"**{points} points** (Correct goal difference! 📊)"
+                                else:
+                                    points_str = f"{points} points"
+                                
+                                st.write(f"   {result_str} | {pred_str} | {points_str}")
+                        
+                        st.write(f"   **Total: {total_points} points**")
+                        st.markdown("---")
+                        
+                except Exception as e:
+                    st.error(f"Error calculating scores: {e}")
+                    st.write("Make sure your results CSV has the correct format:")
+                    st.code("home_team,away_team,home_score,away_score")
+        else:
+            st.info(f"No completed weeks found. Add results files to test scoring.")
+            
+            # Show what files are needed
+            st.write("**Files needed for scoring:**")
+            for week in range(1, current_week):
+                results_exist = os.path.exists(f"results/week{week}.csv")
+                st.write(f"Week {week}: {'✅' if results_exist else '❌ Missing'} results/week{week}.csv")
+
 def display_leaderboard():
     """Display the leaderboard"""
     st.subheader("🏆 Leaderboard")
@@ -170,7 +309,29 @@ def display_leaderboard():
     leaderboard = data_manager.get_leaderboard()
     
     if not leaderboard:
-        st.info("No predictions submitted yet!")
+        st.info("No scores yet! Here's why:")
+        st.write("📋 **To get scores on the leaderboard:**")
+        st.write("1. Users make predictions for the current week")
+        st.write("2. Admin adds results CSV after games are played")
+        st.write("3. Admin advances to the next week")
+        st.write("4. Scores appear here automatically!")
+        
+        # Show current status
+        current_week = config_manager.get_current_week()
+        st.write(f"**Current Status:** Week {current_week}")
+        
+        # Show who has made predictions for current week
+        predictions = data_manager.load_predictions(current_week)
+        if predictions:
+            st.write(f"**Users who have predicted for Week {current_week}:**")
+            for username in predictions.keys():
+                if username != "admin":
+                    user_info = config_manager.get_users().get(username, {})
+                    display_name = user_info.get("display_name", username)
+                    st.write(f"✅ {display_name}")
+        else:
+            st.write("No predictions submitted yet for the current week.")
+        
         return
     
     # Create leaderboard dataframe
