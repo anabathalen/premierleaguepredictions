@@ -61,13 +61,26 @@ class DataManager:
     
     def calculate_points(self, prediction, actual_result):
         """Calculate points for a single match prediction"""
-        if not actual_result or pd.isna(actual_result.get('home_score')) or pd.isna(actual_result.get('away_score')):
+        # Handle pandas Series properly
+        if actual_result is None:
+            return 0
+            
+        # Convert pandas Series to dict if needed
+        if hasattr(actual_result, 'to_dict'):
+            actual_result = actual_result.to_dict()
+        
+        # Check if we have valid scores
+        home_score = actual_result.get('home_score')
+        away_score = actual_result.get('away_score')
+        
+        if home_score is None or away_score is None or pd.isna(home_score) or pd.isna(away_score):
             return 0
         
+        # Get prediction scores
         pred_home = prediction.get('home_score', 0)
         pred_away = prediction.get('away_score', 0)
-        actual_home = int(actual_result['home_score'])
-        actual_away = int(actual_result['away_score'])
+        actual_home = int(home_score)
+        actual_away = int(away_score)
         
         points = 0
         
@@ -150,11 +163,6 @@ class DataManager:
         
         return sorted(leaderboard, key=lambda x: x["total_points"], reverse=True)
     
-    def has_user_predicted(self, username, week_num):
-        """Check if user has already made predictions for a week"""
-        predictions = self.load_predictions(week_num, username)
-        return len(predictions) > 0
-
     def has_user_predicted(self, username, week_num):
         """Check if user has already made predictions for a week"""
         predictions = self.load_predictions(week_num, username)
