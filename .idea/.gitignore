@@ -2,8 +2,8 @@
 .env
 .env.local
 
-# Encrypted data files (but NOT users.json - we need that committed)
-predictions/
+# Encrypted prediction data (users.json is OK to commit as it's encrypted)
+predictions/*.json
 current_week.txt
 
 # Python
@@ -27,6 +27,7 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Local development only
+# Development files
 debug_users.py
 test_setup.py
+setup_users.py
