@@ -27,8 +27,8 @@ class GitHubConfigManager:
         }
         
         # Configuration file paths
-        self.users_file = "config/users.json"
-        self.settings_file = "config/settings.json"
+        self.users_file = "users.json"
+        self.settings_file = "settings.json"
         
         # Initialize with default data if files don't exist
         self._initialize_config_files()
