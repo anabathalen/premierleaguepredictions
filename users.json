@@ -1,0 +1,27 @@
+{
+    "admin": {
+        "passcode": "admin123",
+        "is_admin": true,
+        "display_name": "Administrator"
+    },
+    "joe": {
+        "passcode": "Ye110ws",
+        "is_admin": false,
+        "display_name": "Joe: For whom the bell Scholes 🔔"
+    },
+    "claudia": {
+        "passcode": "Ce1este",
+        "is_admin": false,
+        "display_name": "Claudia: The Celeste Redemption 🩵"
+    },
+    "jon": {
+        "passcode": "F10r1anW1rtz",
+        "is_admin": false,
+        "display_name": "Jon: Could be Wirtz 🤷"
+    },
+    "ana": {
+        "passcode": "Darw1nNunez",
+        "is_admin": false,
+        "display_name": "Ana: Danns not Slot 🌡️"
+    }
+}
