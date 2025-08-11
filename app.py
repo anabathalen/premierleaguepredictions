@@ -20,7 +20,6 @@ st.set_page_config(
 try:
     from crypto_utils import DataEncryption
     test_encryption = DataEncryption()
-    st.success("🔑 Encryption key loaded successfully!")
 except Exception as e:
     st.error("🔑 Encryption Key Problem!")
     st.write("**Error:**", str(e))
@@ -36,95 +35,50 @@ config_manager = ConfigManager()
 
 # Initialize users file
 try:
-    st.info("🔄 Initializing users...")
     users = config_manager.initialize_users()
     
     if not users:
-        st.error("❌ No users found after initialization")
-        
-        # Try to debug the issue
-        st.write("**Debugging the issue:**")
-        
-        # Check if file exists
-        users_file_exists = os.path.exists("users.json")
-        st.write(f"users.json file exists: {users_file_exists}")
-        
-        if users_file_exists:
-            # Try to read the raw file
-            try:
-                with open("users.json", "r") as f:
-                    file_content = f.read()
-                st.write(f"File size: {len(file_content)} characters")
-                st.write("File starts with:", file_content[:50] + "..." if len(file_content) > 50 else file_content)
-                
-                # Try to decrypt
-                from crypto_utils import DataEncryption
-                enc = DataEncryption()
-                decrypted = enc.decrypt_data(file_content)
-                if decrypted:
-                    st.write(f"✅ File decrypts successfully with {len(decrypted)} users")
-                else:
-                    st.write("❌ File exists but won't decrypt - wrong encryption key?")
-            except Exception as e:
-                st.write(f"Error reading file: {e}")
-        else:
-            st.write("File doesn't exist - trying to create it...")
-            try:
-                # Force create users
-                test_users = {
-                    "admin": {
-                        "passcode": "admin123",
-                        "is_admin": True,
-                        "display_name": "Administrator"
-                    }
+        # Try to create default admin user
+        try:
+            test_users = {
+                "admin": {
+                    "passcode": "admin123",
+                    "is_admin": True,
+                    "display_name": "Administrator"
                 }
-                from crypto_utils import DataEncryption
-                enc = DataEncryption()
-                enc.save_encrypted_file(test_users, "users.json")
-                st.write("✅ Created users file successfully!")
-                st.rerun()
-            except Exception as e:
-                st.write(f"❌ Failed to create users file: {e}")
-        
-        st.stop()
-    else:
-        st.success(f"✅ Loaded {len(users)} users successfully")
+            }
+            from crypto_utils import DataEncryption
+            enc = DataEncryption()
+            enc.save_encrypted_file(test_users, "users.json")
+            st.info("Created default admin user. Login with username: 'admin', passcode: 'admin123'")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Failed to initialize users: {e}")
+            st.stop()
         
 except Exception as e:
-    st.error(f"❌ Error initializing users: {e}")
+    st.error(f"Error initializing users: {e}")
     st.write("**Common solutions:**")
     st.write("1. Make sure ENCRYPTION_KEY is set in Streamlit Cloud app settings → Secrets")
     st.write("2. The encryption key should be at least 8 characters long")
     st.write("3. Try clicking the 'Reboot app' button in Streamlit Cloud")
     st.stop()
 
+def display_front_page_blurb():
+    """Display admin-configured front page message"""
+    try:
+        # Try to load front page message from config
+        blurb = config_manager.get_front_page_blurb()
+        if blurb:
+            st.info(blurb)
+    except:
+        # If no blurb exists, show default
+        pass
+
 def main():
-    # Debug mode - add this temporarily
-    with st.sidebar.expander("🔧 Debug Info"):
-        if st.button("Reset Users File"):
-            if os.path.exists("users.json"):
-                os.remove("users.json")
-            config_manager.initialize_users()
-            st.success("Users file reset!")
-            st.rerun()
-        
-        # Show file status
-        st.write("File status:")
-        st.write(f"users.json exists: {os.path.exists('users.json')}")
-        
-        # Test encryption
-        try:
-            users = config_manager.get_users()
-            st.write(f"Users loaded: {len(users)} users")
-            if "admin" in users:
-                st.write("✅ Admin user found")
-            else:
-                st.write("❌ Admin user not found")
-        except Exception as e:
-            st.write(f"Error loading users: {e}")
-    
     # Check authentication
     if not auth_manager.require_login():
+        display_front_page_blurb()
         auth_manager.login_form()
         return
     
@@ -140,8 +94,34 @@ def main():
             admin_panel()
             st.markdown("### User Management")
             user_management_panel()
-            st.markdown("### Scoring Test")
-            scoring_test_panel()
+            st.markdown("### Results Management")
+            results_management_panel()
+            st.markdown("### Front Page Settings")
+            front_page_management_panel()
+            
+            # Only show debug info for admin
+            with st.expander("🔧 Debug Info"):
+                if st.button("Reset Users File"):
+                    if os.path.exists("users.json"):
+                        os.remove("users.json")
+                    config_manager.initialize_users()
+                    st.success("Users file reset!")
+                    st.rerun()
+                
+                # Show file status
+                st.write("File status:")
+                st.write(f"users.json exists: {os.path.exists('users.json')}")
+                
+                # Test encryption
+                try:
+                    users = config_manager.get_users()
+                    st.write(f"Users loaded: {len(users)} users")
+                    if "admin" in users:
+                        st.write("✅ Admin user found")
+                    else:
+                        st.write("❌ Admin user not found")
+                except Exception as e:
+                    st.write(f"Error loading users: {e}")
         
         if st.button("Logout"):
             auth_manager.logout()
@@ -152,6 +132,10 @@ def main():
     # Title
     st.title("🏆 Premier League Predictions League")
     st.markdown(f"**Current Week:** {current_week}")
+    
+    # Show front page blurb for logged in users too
+    display_front_page_blurb()
+    
     st.markdown("---")
     
     # Navigation
@@ -218,89 +202,137 @@ def user_management_panel():
                 else:
                     st.warning("Please fill in all fields")
 
-def scoring_test_panel():
-    """Admin panel to test scoring system"""
-    with st.expander("🧮 Test Scoring System"):
-        st.write("This will show you how scoring works")
-        
+def results_management_panel():
+    """Admin panel to input results and generate results files"""
+    with st.expander("📊 Input Match Results"):
         current_week = config_manager.get_current_week()
         
-        # Show completed weeks with results
-        completed_weeks = []
-        for week in range(1, current_week):
-            results = data_manager.load_results(week)
-            if results is not None:
-                completed_weeks.append(week)
+        # Week selector
+        selected_week = st.selectbox(
+            "Select week to input results:", 
+            range(1, current_week + 1),
+            index=current_week - 1
+        )
         
-        if completed_weeks:
-            selected_week = st.selectbox("Select week to view scores:", completed_weeks)
-            
-            if st.button("Calculate Scores for This Week"):
-                try:
-                    results = data_manager.load_results(selected_week)
-                    predictions = data_manager.load_predictions(selected_week)
-                    
-                    if results is None:
-                        st.error(f"No results file found for week {selected_week}")
-                        return
-                        
-                    if not predictions:
-                        st.warning(f"No predictions found for week {selected_week}")
-                        return
-                    
-                    st.write(f"**Week {selected_week} Results:**")
-                    st.dataframe(results)
-                    
-                    st.write(f"**User Predictions and Scores:**")
-                    
-                    for username, user_data in predictions.items():
-                        if username == "admin":  # Skip admin
-                            continue
-                            
-                        # Get display name
-                        users = config_manager.get_users()
-                        display_name = users.get(username, {}).get("display_name", username)
-                        
-                        st.write(f"**{display_name}:**")
-                        
-                        user_predictions = user_data["predictions"]
-                        total_points = 0
-                        
-                        for i, result_row in results.iterrows():
-                            if i < len(user_predictions):
-                                pred = user_predictions[i]
-                                points = data_manager.calculate_points(pred, result_row)
-                                total_points += points
-                                
-                                result_str = f"{result_row['home_team']} {result_row['home_score']}-{result_row['away_score']} {result_row['away_team']}"
-                                pred_str = f"Predicted: {pred['home_score']}-{pred['away_score']}"
-                                
-                                if points == 5:
-                                    points_str = f"**{points} points** (Exact score! 🎯)"
-                                elif points == 3:
-                                    points_str = f"**{points} points** (Correct result! ✅)"
-                                elif points == 1:
-                                    points_str = f"**{points} points** (Correct goal difference! 📊)"
-                                else:
-                                    points_str = f"{points} points"
-                                
-                                st.write(f"   {result_str} | {pred_str} | {points_str}")
-                        
-                        st.write(f"   **Total: {total_points} points**")
-                        st.markdown("---")
-                        
-                except Exception as e:
-                    st.error(f"Error calculating scores: {e}")
-                    st.write("Make sure your results CSV has the correct format:")
-                    st.code("home_team,away_team,home_score,away_score")
+        # Check if fixtures exist for selected week
+        fixtures = data_manager.load_fixtures(selected_week)
+        if fixtures is None:
+            st.error(f"No fixtures found for week {selected_week}")
+            return
+        
+        # Check if results already exist
+        existing_results = data_manager.load_results(selected_week)
+        results_exist = existing_results is not None
+        
+        if results_exist:
+            st.info(f"Results already exist for week {selected_week}")
+            if st.checkbox("Edit existing results"):
+                show_results_form = True
+            else:
+                st.dataframe(existing_results)
+                show_results_form = False
         else:
-            st.info(f"No completed weeks found. Add results files to test scoring.")
-            
-            # Show what files are needed
-            st.write("**Files needed for scoring:**")
-            for week in range(1, current_week):
-                results_exist = os.path.exists(f"results/week{week}.csv")
-                st.write(f"Week {week}: {'✅' if results_exist else '❌ Missing'} results/week{week}.csv")
+            show_results_form = True
+        
+        if show_results_form:
+            with st.form(f"results_form_week_{selected_week}"):
+                st.write(f"**Input results for Week {selected_week}:**")
+                
+                results_data = []
+                
+                for i, (_, fixture) in enumerate(fixtures.iterrows()):
+                    st.markdown(f"**{fixture['home_team']} vs {fixture['away_team']}**")
+                    
+                    # Get existing results if available
+                    existing_home = 0
+                    existing_away = 0
+                    if results_exist and i < len(existing_results):
+                        existing_home = existing_results.iloc[i]['home_score']
+                        existing_away = existing_results.iloc[i]['away_score']
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        home_score = st.number_input(
+                            f"{fixture['home_team']}:", 
+                            min_value=0, max_value=20, 
+                            value=int(existing_home), 
+                            key=f"result_home_{selected_week}_{i}"
+                        )
+                    with col2:
+                        away_score = st.number_input(
+                            f"{fixture['away_team']}:", 
+                            min_value=0, max_value=20, 
+                            value=int(existing_away), 
+                            key=f"result_away_{selected_week}_{i}"
+                        )
+                    
+                    results_data.append({
+                        'home_team': fixture['home_team'],
+                        'away_team': fixture['away_team'],
+                        'home_score': home_score,
+                        'away_score': away_score
+                    })
+                
+                if st.form_submit_button("Save Results"):
+                    try:
+                        # Create results DataFrame
+                        results_df = pd.DataFrame(results_data)
+                        
+                        # Create results directory if it doesn't exist
+                        os.makedirs("results", exist_ok=True)
+                        
+                        # Save results file
+                        results_file = f"results/week{selected_week}.csv"
+                        results_df.to_csv(results_file, index=False)
+                        
+                        st.success(f"Results saved for week {selected_week}!")
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"Error saving results: {e}")
+
+def front_page_management_panel():
+    """Admin panel to manage front page message"""
+    with st.expander("📢 Front Page Message"):
+        st.write("Set a message that appears on the front page before login")
+        
+        # Get current blurb
+        try:
+            current_blurb = config_manager.get_front_page_blurb()
+        except:
+            current_blurb = ""
+        
+        # Text area for the blurb
+        new_blurb = st.text_area(
+            "Front page message:",
+            value=current_blurb,
+            height=100,
+            help="This message will appear on the login page. Leave empty to show no message."
+        )
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Save Message"):
+                try:
+                    config_manager.set_front_page_blurb(new_blurb)
+                    st.success("Front page message updated!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error saving message: {e}")
+        
+        with col2:
+            if st.button("Clear Message"):
+                try:
+                    config_manager.set_front_page_blurb("")
+                    st.success("Front page message cleared!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error clearing message: {e}")
+        
+        # Preview
+        if new_blurb:
+            st.write("**Preview:**")
+            st.info(new_blurb)
 
 def display_leaderboard():
     """Display the leaderboard"""
