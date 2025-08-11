@@ -386,98 +386,71 @@ def display_leaderboard():
                     st.write("No completed weeks yet")
 
 def prediction_form(week_num, username):
-    """Display prediction form for current week"""
     st.subheader(f"⚽ Week {week_num} Predictions")
-    
-    # Check if fixtures exist
     fixtures = data_manager.load_fixtures(week_num)
     if fixtures is None:
         st.error(f"Fixtures for week {week_num} not found! Please contact admin.")
         return
-    
-    # Check if user has already predicted
+
     has_predicted = data_manager.has_user_predicted(username, week_num)
-    
-    if has_predicted:
+    edit_mode = st.session_state.get("edit_predictions", False)
+
+    # If user has predicted and is NOT editing, show predictions + edit button
+    if has_predicted and not edit_mode:
         st.info("You have already submitted predictions for this week!")
-        
-        # Show existing predictions
+
         existing_predictions = data_manager.load_predictions(week_num, username)
         st.subheader("Your Current Predictions:")
-        
         for i, (_, fixture) in enumerate(fixtures.iterrows()):
             if i < len(existing_predictions):
                 pred = existing_predictions[i]
                 st.write(f"⚽ **{fixture['home_team']} {pred['home_score']}-{pred['away_score']} {fixture['away_team']}**")
-        
+
         st.markdown("---")
-        
         if st.button("Edit Predictions"):
             st.session_state.edit_predictions = True
             st.rerun()
-        
         return
-    
-    # Check if in edit mode
-    edit_mode = st.session_state.get("edit_predictions", False)
-    if not edit_mode and has_predicted:
-        return
-    
-    # Prediction form
+
+    # If in edit mode or making new predictions, show the prediction form
     with st.form("predictions_form"):
         st.write("Make your predictions for this week's fixtures:")
-        
+
         predictions = []
-        
-        # Load existing predictions if editing
         existing_predictions = data_manager.load_predictions(week_num, username) if edit_mode else []
-        
+
         for i, (_, fixture) in enumerate(fixtures.iterrows()):
-            st.markdown(f"**{fixture['home_team']} vs {fixture['away_team']}**")
-            
-            # Get existing prediction if available
             existing_home = existing_predictions[i]['home_score'] if i < len(existing_predictions) else 0
             existing_away = existing_predictions[i]['away_score'] if i < len(existing_predictions) else 0
-            
-            # Single column layout - much safer for mobile
+
             home_score = st.number_input(
-                f"{fixture['home_team']}:", 
-                min_value=0, max_value=20, 
-                value=existing_home, 
+                f"{fixture['home_team']}:",
+                min_value=0, max_value=10,
+                value=existing_home,
                 key=f"home_{i}"
             )
-            
             away_score = st.number_input(
-                f"{fixture['away_team']}:", 
-                min_value=0, max_value=20, 
-                value=existing_away, 
+                f"{fixture['away_team']}:",
+                min_value=0, max_value=10,
+                value=existing_away,
                 key=f"away_{i}"
             )
-            
-            # Show the prediction clearly
-            st.info(f"Your prediction: {fixture['home_team']} {home_score}-{away_score} {fixture['away_team']}")
-            
+
             predictions.append({
                 "home_team": fixture['home_team'],
                 "away_team": fixture['away_team'],
                 "home_score": home_score,
                 "away_score": away_score
             })
-            
             st.markdown("---")
-        
-        submit_button = st.form_submit_button("Submit Predictions" if not edit_mode else "Update Predictions")
-        
-        if submit_button:
-            # Save predictions
+
+        if st.form_submit_button("Submit Predictions" if not edit_mode else "Update Predictions"):
             data_manager.save_predictions(username, week_num, predictions)
             st.success("Predictions submitted successfully!")
-            
-            # Clear edit mode
             if "edit_predictions" in st.session_state:
                 del st.session_state.edit_predictions
-            
             st.rerun()
+
 
 if __name__ == "__main__":
     main()
