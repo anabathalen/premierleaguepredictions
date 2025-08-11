@@ -1,27 +1,33 @@
 {
-    "admin": {
-        "passcode": "admin123",
-        "is_admin": true,
-        "display_name": "Administrator"
-    },
-    "joe": {
-        "passcode": "Ye110ws",
-        "is_admin": false,
-        "display_name": "Joe: For whom the bell Scholes 🔔"
-    },
-    "claudia": {
-        "passcode": "Ce1este",
-        "is_admin": false,
-        "display_name": "Claudia: The Celeste Redemption 🩵"
-    },
-    "jon": {
-        "passcode": "F10r1anW1rtz",
-        "is_admin": false,
-        "display_name": "Jon: Could be Wirtz 🤷"
-    },
-    "ana": {
-        "passcode": "Darw1nNunez",
-        "is_admin": false,
-        "display_name": "Ana: Danns not Slot 🌡️"
-    }
+  "admin": {
+    "passcode": "admin123",
+    "is_admin": true,
+    "display_name": "Administrator"
+  },
+  "joe": {
+    "passcode": "Ye110ws",
+    "is_admin": false,
+    "display_name": "Joe: For whom the bell Scholes \ud83d\udd14"
+  },
+  "claudia": {
+    "passcode": "Ce1este",
+    "is_admin": false,
+    "display_name": "Claudia: The Celeste Redemption \ud83e\ude75"
+  },
+  "jon": {
+    "passcode": "F10r1anW1rtz",
+    "is_admin": false,
+    "display_name": "Jon: Could be Wirtz \ud83e\udd37"
+  },
+  "ana": {
+    "passcode": "Darw1nNunez",
+    "is_admin": false,
+    "display_name": "Ana: Danns not Slot \ud83c\udf21\ufe0f"
+  },
+  "nico": {
+    "password_hash": "ArneS10t",
+    "display_name": "Nico: HEYYEYAAEYAA Wirtz Goin On!? \ud83e\udd0c",
+    "is_admin": false,
+    "created_at": "2025-08-11T17:56:28.481184"
+  }
 }
