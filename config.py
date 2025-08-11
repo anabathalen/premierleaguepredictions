@@ -10,6 +10,7 @@ from crypto_utils import DataEncryption
 ADMIN_USERNAME = "admin"
 ADMIN_PASSCODE = "admin123"  # Change this!
 CURRENT_WEEK_FILE = "current_week.txt"
+CONFIG_FILE = "app_config.json"
 
 # Points system
 POINTS_CORRECT_RESULT = 3  # Win/Draw/Loss correct
@@ -35,6 +36,41 @@ class ConfigManager:
         with open(CURRENT_WEEK_FILE, 'w') as f:
             f.write(str(week_num))
     
+    def load_config(self):
+        """Load app configuration"""
+        config = self.encryption.load_encrypted_file(CONFIG_FILE)
+        if config is None:
+            # Return default config if file doesn't exist
+            return {
+                'front_page_blurb': '',
+                'app_version': '1.0'
+            }
+        return config
+    
+    def save_config(self, config):
+        """Save app configuration"""
+        self.encryption.save_encrypted_file(config, CONFIG_FILE)
+    
+    def get_front_page_blurb(self):
+        """Get the front page message"""
+        try:
+            config = self.load_config()
+            return config.get('front_page_blurb', '')
+        except Exception as e:
+            print(f"Error loading front page blurb: {e}")
+            return ''
+    
+    def set_front_page_blurb(self, message):
+        """Set the front page message"""
+        try:
+            config = self.load_config()
+            config['front_page_blurb'] = message
+            self.save_config(config)
+            return True
+        except Exception as e:
+            print(f"Error saving front page blurb: {e}")
+            raise Exception(f"Failed to save front page message: {e}")
+    
     def initialize_users(self):
         """Initialize users file if it doesn't exist - for cloud deployment"""
         users_file = "users.json"
@@ -52,20 +88,15 @@ class ConfigManager:
                 "is_admin": True,
                 "display_name": "Administrator"
             },
-            "user1": {
-                "passcode": "pass1",
+            "joe": {
+                "passcode": "ell0wsY",
                 "is_admin": False,
-                "display_name": "User One"
+                "display_name": "For whom the bell Scholes 🔔"
             },
-            "user2": {
-                "passcode": "pass2", 
-                "is_admin": False,
-                "display_name": "User Two"
-            },
-            "user3": {
-                "passcode": "pass3", 
-                "is_admin": False,
-                "display_name": "User Three"
+            "ana": {
+                "passcode": "ental1tyM0nsterM",
+                "is_admin": True,
+                "display_name": "Danns not Slot (never Slot) 👊"
             }
         }
         
