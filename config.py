@@ -233,6 +233,9 @@ class GitHubConfigManager:
         user_info = users.get(username, {})
         return user_info.get("is_admin", False)
 
-# Backward compatibility
 class ConfigManager(GitHubConfigManager):
-    pass
+    def initialize_users(self):
+        # Just re-run the file initializer (users.json and settings.json)
+        self._initialize_config_files()
+        return self.get_users()
+
