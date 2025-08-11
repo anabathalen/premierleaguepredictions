@@ -20,6 +20,7 @@ POINTS_GOAL_DIFFERENCE = 1 # Goal difference correct
 class ConfigManager:
     def __init__(self):
         self.encryption = DataEncryption()
+        self.ensure_directories_exist()
         
     def get_current_week(self):
         """Get current gameweek number"""
@@ -50,6 +51,12 @@ class ConfigManager:
     def save_config(self, config):
         """Save app configuration"""
         self.encryption.save_encrypted_file(config, CONFIG_FILE)
+    
+    def ensure_directories_exist(self):
+        """Create necessary directories if they don't exist"""
+        directories = ['fixtures', 'results', 'predictions']
+        for directory in directories:
+            os.makedirs(directory, exist_ok=True)
     
     def get_front_page_blurb(self):
         """Get the front page message"""
