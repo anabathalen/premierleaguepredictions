@@ -11,7 +11,7 @@ load_dotenv()
 
 # Page config
 st.set_page_config(
-    page_title="Premier League Predictions",
+    page_title="Premier League Predictions 2025-26",
     page_icon="⚽",
     layout="wide"
 )
@@ -115,7 +115,7 @@ def main():
     current_week = config_manager.get_current_week()
     
     # Title
-    st.title("🏆 Premier League Predictions League")
+    st.title("🏆 Premier League Predictions 2025-26")
     st.markdown(f"**Current Week:** {current_week}")
     
     # Show front page blurb for logged in users too
@@ -124,7 +124,7 @@ def main():
     st.markdown("---")
     
     # Navigation
-    tab1, tab2 = st.tabs(["📊 Leaderboard", "⚽ Make Predictions"])
+    tab1, tab2 = st.tabs(["📊 LEADERBOARD", "⚽ DO PREDICTIONS"])
     
     with tab1:
         display_leaderboard()
@@ -326,12 +326,7 @@ def display_leaderboard():
     leaderboard = data_manager.get_leaderboard()
     
     if not leaderboard:
-        st.info("No scores yet! Here's why:")
-        st.write("📋 **To get scores on the leaderboard:**")
-        st.write("1. Users make predictions for the current week")
-        st.write("2. Admin adds results CSV after games are played")
-        st.write("3. Admin advances to the next week")
-        st.write("4. Scores appear here automatically!")
+        st.info("No scores yet! Either it is week 1 or Ana has fucked up.")
         
         # Show current status
         current_week = config_manager.get_current_week()
@@ -446,15 +441,15 @@ def prediction_form(week_num, username):
             
             # Single column layout - much safer for mobile
             home_score = st.number_input(
-                f"{fixture['home_team']} score:", 
-                min_value=0, max_value=10, 
+                f"{fixture['home_team']}:", 
+                min_value=0, max_value=20, 
                 value=existing_home, 
                 key=f"home_{i}"
             )
             
             away_score = st.number_input(
-                f"{fixture['away_team']} score:", 
-                min_value=0, max_value=10, 
+                f"{fixture['away_team']}:", 
+                min_value=0, max_value=20, 
                 value=existing_away, 
                 key=f"away_{i}"
             )
