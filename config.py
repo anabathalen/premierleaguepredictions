@@ -9,7 +9,7 @@ POINTS_EXACT_SCORE = 5
 POINTS_CORRECT_RESULT = 3
 POINTS_GOAL_DIFFERENCE = 1
 
-class GithubConfigManager:
+class GitHubConfigManager:
     def __init__(self):
         # GitHub configuration
         self.github_token = os.getenv('GITHUB_TOKEN')
