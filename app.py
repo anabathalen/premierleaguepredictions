@@ -38,23 +38,8 @@ try:
     users = config_manager.initialize_users()
     
     if not users:
-        # Try to create default admin user
-        try:
-            test_users = {
-                "admin": {
-                    "passcode": "admin123",
-                    "is_admin": True,
-                    "display_name": "Administrator"
-                }
-            }
-            from crypto_utils import DataEncryption
-            enc = DataEncryption()
-            enc.save_encrypted_file(test_users, "users.json")
-            st.info("Created default admin user. Login with username: 'admin', passcode: 'admin123'")
-            st.rerun()
-        except Exception as e:
-            st.error(f"Failed to initialize users: {e}")
-            st.stop()
+        st.error("Failed to initialize users. Please check your encryption key.")
+        st.stop()
         
 except Exception as e:
     st.error(f"Error initializing users: {e}")
