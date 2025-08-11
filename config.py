@@ -121,7 +121,7 @@ class GitHubConfigManager:
             print(f"Error loading users: {e}")
             return {}
     
-    def add_user(self, username, password_hash, display_name):
+    def add_user(self, username, password_hash, display_name, is_admin=False):
         """Add a new user"""
         try:
             users_content, sha = self._get_file_from_github(self.users_file)
@@ -130,7 +130,7 @@ class GitHubConfigManager:
             users[username] = {
                 "password_hash": password_hash,
                 "display_name": display_name,
-                "is_admin": False,
+                "is_admin": is_admin,
                 "created_at": datetime.now().isoformat()
             }
             
@@ -144,6 +144,7 @@ class GitHubConfigManager:
         except Exception as e:
             print(f"Error adding user {username}: {e}")
             return False
+
     
     def user_exists(self, username):
         """Check if user exists"""
