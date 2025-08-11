@@ -233,6 +233,26 @@ class GitHubConfigManager:
         user_info = users.get(username, {})
         return user_info.get("is_admin", False)
 
+        def get_front_page_blurb(self):
+        """Get the front page blurb text"""
+        settings = self.get_league_settings()
+        return settings.get("front_page_blurb", "")
+
+    def set_front_page_blurb(self, blurb):
+        """Set the front page blurb text"""
+        content, sha = self._get_file_from_github(self.settings_file)
+        settings = json.loads(content) if content else {}
+        settings["front_page_blurb"] = blurb
+        settings["settings_updated_at"] = datetime.now().isoformat()
+        
+        self._save_file_to_github(
+            self.settings_file,
+            json.dumps(settings, indent=2),
+            "Update front page blurb",
+            sha
+        )
+        return True
+
 class ConfigManager(GitHubConfigManager):
     def initialize_users(self):
         # Just re-run the file initializer (users.json and settings.json)
