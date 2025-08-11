@@ -1,64 +1,80 @@
-import os
 import json
+import base64
+import os
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-import base64
-
 
 class DataEncryption:
-    def __init__(self, password: str = None):
-        """Initialize encryption with password from Streamlit secrets or parameter"""
-        if password is None:
-            try:
-                import streamlit as st
-                password = st.secrets["ENCRYPTION_KEY"]
-            except:
-                # Fallback for local development
-                password = os.getenv('ENCRYPTION_KEY', 'default_key_change_this_for_local_dev_only')
-
-        # Generate a key from password
-        password_bytes = password.encode()
-        salt = b'salt_'  # In production, use a random salt stored securely
+    def __init__(self):
+        # Get encryption key from environment variable or generate one
+        self.encryption_key = self._get_or_create_key()
+        self.fernet = Fernet(self.encryption_key)
+    
+    def _get_or_create_key(self):
+        """Get encryption key from environment or generate a new one"""
+        # Check if key exists in environment variable
+        env_key = os.getenv('ENCRYPTION_KEY')
+        if env_key:
+            return env_key.encode()
+        
+        # Generate key from password (you should set this as an environment variable)
+        password = os.getenv('ENCRYPTION_PASSWORD', 'default-password-change-me').encode()
+        salt = b'prediction-league-salt'  # In production, use a random salt
+        
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
             salt=salt,
             iterations=100000,
         )
-        key = base64.urlsafe_b64encode(kdf.derive(password_bytes))
-        self.cipher_suite = Fernet(key)
-
+        key = base64.urlsafe_b64encode(kdf.derive(password))
+        return key
+    
     def encrypt_data(self, data):
-        """Encrypt data (dict or list) and return base64 string"""
-        json_str = json.dumps(data)
-        encrypted_data = self.cipher_suite.encrypt(json_str.encode())
-        return base64.urlsafe_b64encode(encrypted_data).decode()
-
-    def decrypt_data(self, encrypted_str):
-        """Decrypt base64 string and return original data"""
+        """Encrypt data (dict or list) and return as string"""
         try:
-            encrypted_data = base64.urlsafe_b64decode(encrypted_str.encode())
-            decrypted_data = self.cipher_suite.decrypt(encrypted_data)
-            return json.loads(decrypted_data.decode())
+            # Convert to JSON string
+            json_data = json.dumps(data, default=str)
+            
+            # Encrypt the JSON string
+            encrypted_data = self.fernet.encrypt(json_data.encode())
+            
+            # Return as base64 string for storage
+            return base64.urlsafe_b64encode(encrypted_data).decode()
+        
+        except Exception as e:
+            print(f"Encryption error: {e}")
+            return None
+    
+    def decrypt_data(self, encrypted_string):
+        """Decrypt string and return as original data structure"""
+        try:
+            # Decode from base64
+            encrypted_data = base64.urlsafe_b64decode(encrypted_string.encode())
+            
+            # Decrypt to get JSON string
+            decrypted_bytes = self.fernet.decrypt(encrypted_data)
+            json_string = decrypted_bytes.decode()
+            
+            # Parse JSON back to Python object
+            return json.loads(json_string)
+        
         except Exception as e:
             print(f"Decryption error: {e}")
             return None
-
-    def save_encrypted_file(self, data, filepath):
-        """Save encrypted data to file"""
-        encrypted_str = self.encrypt_data(data)
-        with open(filepath, 'w') as f:
-            f.write(encrypted_str)
-
-    def load_encrypted_file(self, filepath):
-        """Load and decrypt data from file"""
-        try:
-            with open(filepath, 'r') as f:
-                encrypted_str = f.read()
-            return self.decrypt_data(encrypted_str)
-        except FileNotFoundError:
-            return None
-        except Exception as e:
-            print(f"Error loading file {filepath}: {e}")
-            return None
+    
+    # Legacy methods for backward compatibility
+    def save_encrypted_file(self, data, filename):
+        """Legacy method - now returns encrypted string instead of saving file"""
+        return self.encrypt_data(data)
+    
+    def load_encrypted_file(self, filename):
+        """Legacy method - now expects encrypted string instead of filename"""
+        if isinstance(filename, str) and filename.startswith('{'):
+            # If it looks like JSON, try to parse directly
+            try:
+                return json.loads(filename)
+            except:
+                pass
+        return self.decrypt_data(filename) if filename else None
