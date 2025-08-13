@@ -47,5 +47,11 @@
     "display_name": "Stacy: Eze or not Eze \ud83d\udde1\ufe0f",
     "is_admin": false,
     "created_at": "2025-08-13T20:09:14.452478"
+  },
+  "jez": {
+    "password_hash": "Dynam0K1ev",
+    "display_name": "Jez: Dynamo Bicycle \ud83d\udeb4 ",
+    "is_admin": false,
+    "created_at": "2025-08-13T20:16:22.026000"
   }
 }
