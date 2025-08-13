@@ -41,5 +41,11 @@
     "display_name": "Payno: Champagne's Yellows \ud83c\udf7e",
     "is_admin": false,
     "created_at": "2025-08-13T20:06:08.850107"
+  },
+  "stacy": {
+    "password_hash": "Crysta1Pa1ace",
+    "display_name": "Stacy: Eze or not Eze \ud83d\udde1\ufe0f",
+    "is_admin": false,
+    "created_at": "2025-08-13T20:09:14.452478"
   }
 }
