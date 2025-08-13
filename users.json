@@ -29,5 +29,11 @@
     "display_name": "Nico: HEYYEYAAEYAA Wirtz Goin On!? \ud83e\udd0c",
     "is_admin": false,
     "created_at": "2025-08-11T17:56:28.481184"
+  },
+  "jack": {
+    "password_hash": "Nd1aye",
+    "display_name": "Jack: Withnial Ndiaye 🔵",
+    "is_admin": false,
+    "created_at": "2025-08-11T17:56:28.481184"
   }
 }
