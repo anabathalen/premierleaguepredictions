@@ -32,7 +32,7 @@
   },
   "jack": {
     "passcode": "Nd1aye",
-    "display_name": "Jack: Withnial Ndiaye \ud83d\udd35",
+    "display_name": "Jack: Withnail Ndiaye \ud83d\udd35",
     "is_admin": false,
     "created_at": "2025-08-11T17:56:28.481184"
   },
@@ -63,6 +63,12 @@
   "andrew": {
     "passcode": "Benjam1nSesk0",
     "display_name": "Andrew: U-Sesko World Heritage 🌎",
+    "is_admin": false,
+    "created_at": "2025-08-13T20:16:22.026000"
+  },
+  "rowan": {
+    "passcode": "G10ryG10ryManUn1ted",
+    "display_name": "Rowan Twyford: Ha-Cunha Matata 🦁",
     "is_admin": false,
     "created_at": "2025-08-13T20:16:22.026000"
   }
