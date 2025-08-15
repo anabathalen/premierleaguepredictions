@@ -107,5 +107,23 @@
     "display_name": "Laert1s: Charalampostcode Lottery 💰",
     "is_admin": false,
     "created_at": "2025-08-13T20:16:22.026000"
+  },
+  "wei": {
+    "passcode": "We1Sc0resG0als",
+    "display_name": "Wei: Goals Goals Goals ⚽",
+    "is_admin": false,
+    "created_at": "2025-08-13T20:16:22.026000"
+  },
+  "donna": {
+    "passcode": "Ge0rgeBest",
+    "display_name": "Donna: Amorim or Amorout ❓",
+    "is_admin": false,
+    "created_at": "2025-08-13T20:16:22.026000"
+  },
+  "josh": {
+    "passcode": "Cra1gF0rsyth",
+    "display_name": "Josh: Benefit of Forsyth 🔮",
+    "is_admin": false,
+    "created_at": "2025-08-13T20:16:22.026000"
   }
 }
