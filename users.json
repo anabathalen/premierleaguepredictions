@@ -125,5 +125,11 @@
     "display_name": "Josh: Benefit of Forsyth 🔮",
     "is_admin": false,
     "created_at": "2025-08-13T20:16:22.026000"
+  },
+  "ged": {
+    "passcode": "St1ck1epath",
+    "display_name": "Ged: Bunker 💯",
+    "is_admin": false,
+    "created_at": "2025-08-13T20:16:22.026000"
   }
 }
