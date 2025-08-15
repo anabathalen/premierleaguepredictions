@@ -95,5 +95,17 @@
     "display_name": "Hendrik: Manuel - THE BERLIN WALL - Neuer 🧱",
     "is_admin": false,
     "created_at": "2025-08-13T20:16:22.026000"
+  },
+  "craig": {
+    "passcode": "DerbyC0untyCra1g",
+    "display_name": "Craig: Totally Eustace 🤔",
+    "is_admin": false,
+    "created_at": "2025-08-13T20:16:22.026000"
+  },
+  "laertis": {
+    "passcode": "0lymp1ac0s",
+    "display_name": "Laert1s: Charalampostcode Lottery 💰",
+    "is_admin": false,
+    "created_at": "2025-08-13T20:16:22.026000"
   }
 }
