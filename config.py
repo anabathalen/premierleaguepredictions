@@ -5,9 +5,9 @@ import requests
 from datetime import datetime
 
 # Points configuration
-POINTS_EXACT_SCORE = 5
-POINTS_CORRECT_RESULT = 3
-POINTS_GOAL_DIFFERENCE = 1
+POINTS_EXACT_SCORE = 2
+POINTS_CORRECT_RESULT = 1
+POINTS_GOAL_DIFFERENCE = 0
 
 class GitHubConfigManager:
     def __init__(self):
