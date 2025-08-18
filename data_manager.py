@@ -5,6 +5,7 @@ import json
 import base64
 import requests
 from datetime import datetime
+import streamlit as st
 
 # Add current directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -14,23 +15,70 @@ from config import ConfigManager, POINTS_CORRECT_RESULT, POINTS_EXACT_SCORE, POI
 
 class GitHubDataManager:
     def __init__(self):
-        self.encryption = DataEncryption()
+        # Initialize encryption with Streamlit secrets
+        self.encryption = self._initialize_encryption()
         self.config = ConfigManager()
         
-        # GitHub configuration - get these from environment variables or config
-        self.github_token = os.getenv('GITHUB_TOKEN')
-        self.repo_owner = os.getenv('GITHUB_REPO_OWNER')  # e.g., 'yourusername'
-        self.repo_name = os.getenv('GITHUB_REPO_NAME')   # e.g., 'prediction-league-data'
+        # GitHub configuration - get from Streamlit secrets or environment variables
+        self.github_token = self._get_secret('GITHUB_TOKEN')
+        self.repo_owner = self._get_secret('GITHUB_REPO_OWNER')
+        self.repo_name = self._get_secret('GITHUB_REPO_NAME')
         self.branch = 'main'
         
         if not all([self.github_token, self.repo_owner, self.repo_name]):
-            raise ValueError("GitHub configuration missing. Set GITHUB_TOKEN, GITHUB_REPO_OWNER, and GITHUB_REPO_NAME environment variables.")
+            raise ValueError("GitHub configuration missing. Set GITHUB_TOKEN, GITHUB_REPO_OWNER, and GITHUB_REPO_NAME in Streamlit secrets or environment variables.")
         
         self.base_url = f"https://api.github.com/repos/{self.repo_owner}/{self.repo_name}/contents"
         self.headers = {
             'Authorization': f'token {self.github_token}',
             'Accept': 'application/vnd.github.v3+json'
         }
+    
+    def _get_secret(self, key):
+        """Get secret from Streamlit secrets or environment variables"""
+        try:
+            # Try Streamlit secrets first
+            if hasattr(st, 'secrets') and key in st.secrets:
+                return st.secrets[key]
+        except:
+            pass
+        
+        # Fallback to environment variables
+        return os.getenv(key)
+    
+    def _initialize_encryption(self):
+        """Initialize encryption with proper key from Streamlit secrets"""
+        # Temporarily set environment variables for the DataEncryption class
+        encryption_key = self._get_secret('ENCRYPTION_KEY')
+        encryption_password = self._get_secret('ENCRYPTION_PASSWORD')
+        
+        # Store original env vars to restore later
+        original_key = os.environ.get('ENCRYPTION_KEY')
+        original_password = os.environ.get('ENCRYPTION_PASSWORD')
+        
+        try:
+            # Set the secrets as environment variables temporarily
+            if encryption_key:
+                os.environ['ENCRYPTION_KEY'] = encryption_key
+            if encryption_password:
+                os.environ['ENCRYPTION_PASSWORD'] = encryption_password
+            
+            # Create the encryption instance
+            encryption = DataEncryption()
+            
+        finally:
+            # Restore original environment variables
+            if original_key is not None:
+                os.environ['ENCRYPTION_KEY'] = original_key
+            elif 'ENCRYPTION_KEY' in os.environ:
+                del os.environ['ENCRYPTION_KEY']
+            
+            if original_password is not None:
+                os.environ['ENCRYPTION_PASSWORD'] = original_password
+            elif 'ENCRYPTION_PASSWORD' in os.environ:
+                del os.environ['ENCRYPTION_PASSWORD']
+        
+        return encryption
     
     def _get_file_from_github(self, file_path):
         """Get file content from GitHub"""
@@ -82,7 +130,7 @@ class GitHubDataManager:
                 return pd.read_csv(StringIO(content))
             return None
         except Exception as e:
-            print(f"Error loading fixtures for week {week_num}: {e}")
+            st.error(f"Error loading fixtures for week {week_num}: {e}")
             return None
     
     def load_results(self, week_num):
@@ -95,11 +143,11 @@ class GitHubDataManager:
                 return pd.read_csv(StringIO(content))
             return None
         except Exception as e:
-            print(f"Error loading results for week {week_num}: {e}")
+            st.error(f"Error loading results for week {week_num}: {e}")
             return None
     
     def save_predictions(self, username, week_num, predictions):
-        """Save user predictions for a week to GitHub"""
+        """Save user predictions for a week to GitHub (encrypted)"""
         file_path = f"predictions/week{week_num}.json"
         
         try:
@@ -107,7 +155,14 @@ class GitHubDataManager:
             content, sha = self._get_file_from_github(file_path)
             if content:
                 # Decrypt existing data
-                all_predictions = self.encryption.decrypt_data(content) or {}
+                try:
+                    all_predictions = self.encryption.decrypt_data(content)
+                    if all_predictions is None:
+                        st.warning("Failed to decrypt existing predictions. Creating new file.")
+                        all_predictions = {}
+                except Exception as e:
+                    st.warning(f"Error decrypting existing predictions: {e}. Creating new file.")
+                    all_predictions = {}
             else:
                 all_predictions = {}
             
@@ -119,6 +174,9 @@ class GitHubDataManager:
             
             # Encrypt and save back to GitHub
             encrypted_content = self.encryption.encrypt_data(all_predictions)
+            if encrypted_content is None:
+                st.error("Failed to encrypt predictions data")
+                return False
             
             commit_message = f"Update predictions for {username} - Week {week_num}"
             self._save_file_to_github(file_path, encrypted_content, commit_message, sha)
@@ -126,25 +184,33 @@ class GitHubDataManager:
             return True
             
         except Exception as e:
-            print(f"Error saving predictions for {username}, week {week_num}: {e}")
+            st.error(f"Error saving predictions for {username}, week {week_num}: {e}")
             return False
     
     def load_predictions(self, week_num, username=None):
-        """Load predictions for a week from GitHub, optionally for a specific user"""
+        """Load predictions for a week from GitHub (decrypt automatically)"""
         file_path = f"predictions/week{week_num}.json"
         try:
             content, _ = self._get_file_from_github(file_path)
             if content:
-                all_predictions = self.encryption.decrypt_data(content) or {}
+                try:
+                    all_predictions = self.encryption.decrypt_data(content)
+                    if all_predictions is None:
+                        st.error(f"Failed to decrypt predictions for week {week_num}. Check encryption keys.")
+                        return {} if not username else []
+                except Exception as e:
+                    st.error(f"Error decrypting predictions for week {week_num}: {e}")
+                    return {} if not username else []
             else:
                 all_predictions = {}
             
             if username:
-                return all_predictions.get(username, {}).get("predictions", [])
+                user_data = all_predictions.get(username, {})
+                return user_data.get("predictions", [])
             return all_predictions
             
         except Exception as e:
-            print(f"Error loading predictions for week {week_num}: {e}")
+            st.error(f"Error loading predictions for week {week_num}: {e}")
             return {} if not username else []
     
     def calculate_points(self, prediction, actual_result):
@@ -167,8 +233,12 @@ class GitHubDataManager:
         # Get prediction scores
         pred_home = prediction.get('home_score', 0)
         pred_away = prediction.get('away_score', 0)
-        actual_home = int(home_score)
-        actual_away = int(away_score)
+        
+        try:
+            actual_home = int(float(home_score))
+            actual_away = int(float(away_score))
+        except (ValueError, TypeError):
+            return 0
         
         points = 0
         
@@ -211,16 +281,27 @@ class GitHubDataManager:
         # Calculate points for each completed week
         for week in range(1, current_week):
             results = self.load_results(week)
-            if results is None:
+            if results is None or len(results) == 0:
                 continue  # Skip weeks without results
             
             predictions = self.load_predictions(week)
+            if not predictions:
+                continue  # Skip if no predictions found
             
             for username in user_scores:
                 if username in predictions:
                     week_points = 0
-                    user_predictions = predictions[username]["predictions"]
+                    user_data = predictions[username]
                     
+                    # Handle both old and new prediction formats
+                    if isinstance(user_data, dict) and "predictions" in user_data:
+                        user_predictions = user_data["predictions"]
+                    elif isinstance(user_data, list):
+                        user_predictions = user_data
+                    else:
+                        continue
+                    
+                    # Calculate points for each match
                     for i, result_row in results.iterrows():
                         if i < len(user_predictions):
                             points = self.calculate_points(user_predictions[i], result_row)
@@ -271,7 +352,7 @@ class GitHubDataManager:
             self._save_file_to_github(file_path, csv_content, commit_message, sha)
             return True
         except Exception as e:
-            print(f"Error saving fixtures for week {week_num}: {e}")
+            st.error(f"Error saving fixtures for week {week_num}: {e}")
             return False
     
     def save_results(self, week_num, results_df):
@@ -289,8 +370,33 @@ class GitHubDataManager:
             self._save_file_to_github(file_path, csv_content, commit_message, sha)
             return True
         except Exception as e:
-            print(f"Error saving results for week {week_num}: {e}")
+            st.error(f"Error saving results for week {week_num}: {e}")
             return False
+    
+    def debug_encryption_status(self):
+        """Debug method to check encryption setup and test decryption"""
+        st.write("### Encryption Debug Info")
+        
+        # Check if secrets are available
+        encryption_key = self._get_secret('ENCRYPTION_KEY')
+        encryption_password = self._get_secret('ENCRYPTION_PASSWORD')
+        
+        st.write(f"- ENCRYPTION_KEY: {'✅ Set' if encryption_key else '❌ Not set'}")
+        st.write(f"- ENCRYPTION_PASSWORD: {'✅ Set' if encryption_password else '❌ Not set (using default)'}")
+        
+        # Test encryption round-trip
+        test_data = {"test": "data", "number": 123}
+        encrypted = self.encryption.encrypt_data(test_data)
+        if encrypted:
+            decrypted = self.encryption.decrypt_data(encrypted)
+            if decrypted == test_data:
+                st.write("- Encryption test: ✅ Passed")
+            else:
+                st.write("- Encryption test: ❌ Failed - decryption mismatch")
+        else:
+            st.write("- Encryption test: ❌ Failed - encryption returned None")
+        
+        return encryption_key, encryption_password
 
 # Keep the original class name for backward compatibility
 class DataManager(GitHubDataManager):
