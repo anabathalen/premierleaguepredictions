@@ -131,5 +131,17 @@
     "display_name": "Ged: Bunker 💯",
     "is_admin": false,
     "created_at": "2025-08-13T20:16:22.026000"
+  },
+  "rachel": {
+    "passcode": "C0me0nY0u1r0ns",
+    "display_name": "Rachel: Name Pending Decision...",
+    "is_admin": false,
+    "created_at": "2025-08-13T20:16:22.026000"
+  },
+  "lea": {
+    "passcode": "Les0ranje",
+    "display_name": "Lea: Name Pending Decision...",
+    "is_admin": false,
+    "created_at": "2025-08-13T20:16:22.026000"
   }
 }
