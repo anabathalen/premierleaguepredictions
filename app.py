@@ -79,8 +79,12 @@ def main():
             admin_panel()
             st.markdown("### User Management")
             user_management_panel()
+            st.markdown("### Score Management")
+            score_management_panel()
             st.markdown("### Results Management")
             results_management_panel()
+            st.markdown("### Prediction Export")
+            prediction_export_panel()
             st.markdown("### Front Page Settings")
             front_page_management_panel()
             
@@ -276,6 +280,236 @@ def results_management_panel():
                     except Exception as e:
                         st.error(f"Error saving results: {e}")
 
+def score_management_panel():
+    """Admin panel to manually adjust user scores"""
+    with st.expander("🔢 Manual Score Management"):
+        st.subheader("Adjust User Scores")
+        
+        try:
+            # Get current leaderboard
+            leaderboard = data_manager.get_leaderboard()
+            
+            if not leaderboard:
+                st.info("No users with scores yet.")
+                return
+            
+            # Select user
+            user_options = [f"{user['display_name']} ({user['username']})" for user in leaderboard]
+            selected_user_idx = st.selectbox("Select User", range(len(user_options)), 
+                                           format_func=lambda x: user_options[x])
+            
+            if selected_user_idx is not None:
+                selected_user = leaderboard[selected_user_idx]
+                username = selected_user['username']
+                
+                st.write(f"**Current Score:** {selected_user['total_points']} points")
+                st.write(f"**Weeks Played:** {selected_user['weeks_played']}")
+                
+                # Show weekly breakdown
+                if selected_user['weekly_breakdown']:
+                    st.write("**Weekly Breakdown:**")
+                    for week, points in selected_user['weekly_breakdown'].items():
+                        week_num = week.replace("week_", "")
+                        st.write(f"Week {week_num}: {points} points")
+                
+                st.markdown("---")
+                
+                # Manual score adjustment
+                st.subheader("Manual Adjustment")
+                adjustment_type = st.radio("Adjustment Type", 
+                                         ["Add Points", "Subtract Points", "Set Total Points"])
+                
+                if adjustment_type in ["Add Points", "Subtract Points"]:
+                    points_change = st.number_input("Points to adjust", min_value=1, max_value=100, value=1)
+                    reason = st.text_input("Reason for adjustment")
+                    
+                    if st.button(f"{adjustment_type}"):
+                        if reason:
+                            try:
+                                # Calculate the actual points change
+                                if adjustment_type == "Add Points":
+                                    actual_change = points_change
+                                else:
+                                    actual_change = -points_change
+                                
+                                # Save the manual adjustment
+                                current_user = auth_manager.get_current_user()
+                                success = data_manager.save_manual_adjustment(
+                                    username, 
+                                    actual_change, 
+                                    reason, 
+                                    current_user['username']
+                                )
+                                
+                                if success:
+                                    st.success(f"Successfully adjusted {selected_user['display_name']}'s score by {actual_change} points!")
+                                    st.info(f"Reason: {reason}")
+                                    st.rerun()
+                                else:
+                                    st.error("Failed to save adjustment.")
+                            except Exception as e:
+                                st.error(f"Error adjusting score: {e}")
+                        else:
+                            st.warning("Please provide a reason for the adjustment")
+                
+                elif adjustment_type == "Set Total Points":
+                    new_total = st.number_input("New total points", min_value=0, value=selected_user['total_points'])
+                    reason = st.text_input("Reason for setting new total")
+                    
+                    if st.button("Set Total Points"):
+                        if reason:
+                            try:
+                                # Calculate what adjustment is needed to reach the new total
+                                current_total = selected_user['total_points']
+                                points_change = new_total - current_total
+                                
+                                # Save the manual adjustment
+                                current_user = auth_manager.get_current_user()
+                                success = data_manager.save_manual_adjustment(
+                                    username, 
+                                    points_change, 
+                                    f"Set total to {new_total}: {reason}", 
+                                    current_user['username']
+                                )
+                                
+                                if success:
+                                    st.success(f"Successfully set {selected_user['display_name']}'s score to {new_total} points!")
+                                    st.info(f"Reason: {reason}")
+                                    st.rerun()
+                                else:
+                                    st.error("Failed to save adjustment.")
+                            except Exception as e:
+                                st.error(f"Error setting total points: {e}")
+                        else:
+                            st.warning("Please provide a reason for the adjustment")
+                
+                # Show manual adjustments history
+                adjustments = data_manager.get_manual_adjustments(username)
+                if adjustments:
+                    st.markdown("---")
+                    st.subheader("Manual Adjustment History")
+                    for adj in reversed(adjustments[-5:]):  # Show last 5 adjustments
+                        st.write(f"**{adj['timestamp'][:19]}** by {adj['admin_user']}: {'+' if adj['points_change'] > 0 else ''}{adj['points_change']} points")
+                        st.write(f"Reason: {adj['reason']}")
+                        st.write("")
+                            
+        except Exception as e:
+            st.error(f"Error in score management: {e}")
+
+def prediction_export_panel():
+    """Admin panel to export predictions as spreadsheet"""
+    with st.expander("📊 Export Predictions"):
+        st.subheader("Download Unencrypted Predictions")
+        
+        current_week = config_manager.get_current_week()
+        
+        # Week selector for export
+        available_weeks = []
+        for week in range(1, current_week + 1):
+            predictions = data_manager.load_predictions(week)
+            if predictions:
+                available_weeks.append(week)
+        
+        if not available_weeks:
+            st.info("No predictions available for export yet.")
+            return
+        
+        selected_weeks = st.multiselect("Select weeks to export", 
+                                       available_weeks, 
+                                       default=available_weeks)
+        
+        export_format = st.radio("Export Format", ["CSV", "Excel"])
+        
+        if st.button("Generate Export"):
+            try:
+                # Create export data
+                export_data = []
+                users = config_manager.get_users()
+                
+                for week in selected_weeks:
+                    predictions = data_manager.load_predictions(week)
+                    fixtures = data_manager.load_fixtures(week)
+                    results = data_manager.load_results(week)
+                    
+                    if not predictions or fixtures is None:
+                        continue
+                    
+                    for username, pred_data in predictions.items():
+                        if username == "admin":
+                            continue
+                            
+                        # Handle both old and new prediction formats
+                        if isinstance(pred_data, dict) and "predictions" in pred_data:
+                            user_predictions = pred_data["predictions"]
+                            submitted_at = pred_data.get("submitted_at", "")
+                        else:
+                            user_predictions = pred_data
+                            submitted_at = ""
+                        
+                        user_info = users.get(username, {})
+                        display_name = user_info.get("display_name", username)
+                        
+                        for i, prediction in enumerate(user_predictions):
+                            if i < len(fixtures):
+                                fixture = fixtures.iloc[i]
+                                
+                                # Get actual result if available
+                                actual_home = actual_away = ""
+                                if results is not None and i < len(results):
+                                    result_row = results.iloc[i]
+                                    actual_home = result_row.get('home_score', '')
+                                    actual_away = result_row.get('away_score', '')
+                                
+                                export_data.append({
+                                    'Week': week,
+                                    'Username': username,
+                                    'Display_Name': display_name,
+                                    'Home_Team': fixture['home_team'],
+                                    'Away_Team': fixture['away_team'],
+                                    'Predicted_Home': prediction.get('home_score', ''),
+                                    'Predicted_Away': prediction.get('away_score', ''),
+                                    'Actual_Home': actual_home,
+                                    'Actual_Away': actual_away,
+                                    'Submitted_At': submitted_at
+                                })
+                
+                if export_data:
+                    import pandas as pd
+                    df = pd.DataFrame(export_data)
+                    
+                    if export_format == "CSV":
+                        csv = df.to_csv(index=False)
+                        st.download_button(
+                            label="Download CSV",
+                            data=csv,
+                            file_name=f"predictions_weeks_{'-'.join(map(str, selected_weeks))}.csv",
+                            mime='text/csv'
+                        )
+                    else:  # Excel
+                        from io import BytesIO
+                        output = BytesIO()
+                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                            df.to_excel(writer, index=False, sheet_name='Predictions')
+                        
+                        st.download_button(
+                            label="Download Excel",
+                            data=output.getvalue(),
+                            file_name=f"predictions_weeks_{'-'.join(map(str, selected_weeks))}.xlsx",
+                            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        )
+                    
+                    st.success(f"Export ready! {len(export_data)} prediction records found.")
+                    
+                    # Show preview
+                    st.subheader("Preview (First 10 rows)")
+                    st.dataframe(df.head(10))
+                    
+                else:
+                    st.warning("No prediction data found for selected weeks.")
+                    
+            except Exception as e:
+                st.error(f"Error generating export: {e}")
+
 def front_page_management_panel():
     """Admin panel to manage front page message"""
     with st.expander("📢 Front Page Message"):
@@ -349,12 +583,14 @@ def display_leaderboard():
     # Create leaderboard dataframe
     df_data = []
     for i, user in enumerate(leaderboard):
+        manual_adj = user.get("manual_adjustments", 0)
         df_data.append({
             "Pos": i + 1,
             "Player": user["display_name"],
             "Points": user["total_points"],
             "Weeks": user["weeks_played"],
-            "Avg": user["average_points"]
+            "Avg": user["average_points"],
+            "Manual": f"{manual_adj:+d}" if manual_adj != 0 else ""
         })
     
     df = pd.DataFrame(df_data)

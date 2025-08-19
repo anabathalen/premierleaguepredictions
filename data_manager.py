@@ -261,58 +261,6 @@ class GitHubDataManager:
         
         return points
     
-    def calculate_user_scores(self):
-        """Calculate scores for all users across all completed weeks"""
-        users = self.config.get_users()
-        user_scores = {}
-        
-        # Initialize scores
-        for username in users:
-            if username != "admin":  # Skip admin from leaderboard
-                user_scores[username] = {
-                    "display_name": users[username]["display_name"],
-                    "total_points": 0,
-                    "weeks_played": 0,
-                    "weekly_breakdown": {}
-                }
-        
-        current_week = self.config.get_current_week()
-        
-        # Calculate points for each completed week
-        for week in range(1, current_week):
-            results = self.load_results(week)
-            if results is None or len(results) == 0:
-                continue  # Skip weeks without results
-            
-            predictions = self.load_predictions(week)
-            if not predictions:
-                continue  # Skip if no predictions found
-            
-            for username in user_scores:
-                if username in predictions:
-                    week_points = 0
-                    user_data = predictions[username]
-                    
-                    # Handle both old and new prediction formats
-                    if isinstance(user_data, dict) and "predictions" in user_data:
-                        user_predictions = user_data["predictions"]
-                    elif isinstance(user_data, list):
-                        user_predictions = user_data
-                    else:
-                        continue
-                    
-                    # Calculate points for each match
-                    for i, result_row in results.iterrows():
-                        if i < len(user_predictions):
-                            points = self.calculate_points(user_predictions[i], result_row)
-                            week_points += points
-                    
-                    user_scores[username]["total_points"] += week_points
-                    user_scores[username]["weeks_played"] += 1
-                    user_scores[username]["weekly_breakdown"][f"week_{week}"] = week_points
-        
-        return user_scores
-    
     def get_leaderboard(self):
         """Get leaderboard sorted by total points"""
         user_scores = self.calculate_user_scores()
@@ -327,7 +275,8 @@ class GitHubDataManager:
                 "total_points": data["total_points"],
                 "weeks_played": data["weeks_played"],
                 "average_points": round(avg_points, 2),
-                "weekly_breakdown": data["weekly_breakdown"]
+                "weekly_breakdown": data["weekly_breakdown"],
+                "manual_adjustments": data.get("manual_adjustments", 0)
             })
         
         return sorted(leaderboard, key=lambda x: x["total_points"], reverse=True)
@@ -397,6 +346,115 @@ class GitHubDataManager:
             st.write("- Encryption test: ❌ Failed - encryption returned None")
         
         return encryption_key, encryption_password
+    
+    def save_manual_adjustment(self, username, points_change, reason, admin_user):
+        """Save a manual score adjustment to a log file"""
+        adjustment_file = "manual_adjustments.json"
+        
+        try:
+            # Load existing adjustments
+            content, sha = self._get_file_from_github(adjustment_file)
+            if content:
+                adjustments = json.loads(content)
+            else:
+                adjustments = []
+            
+            # Add new adjustment
+            adjustment = {
+                "username": username,
+                "points_change": points_change,
+                "reason": reason,
+                "admin_user": admin_user,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            adjustments.append(adjustment)
+            
+            # Save back to GitHub
+            commit_message = f"Manual score adjustment: {username} {'+' if points_change > 0 else ''}{points_change} points"
+            self._save_file_to_github(adjustment_file, json.dumps(adjustments, indent=2), commit_message, sha)
+            
+            return True
+            
+        except Exception as e:
+            st.error(f"Error saving manual adjustment: {e}")
+            return False
+    
+    def get_manual_adjustments(self, username=None):
+        """Get manual score adjustments for a user or all users"""
+        adjustment_file = "manual_adjustments.json"
+        
+        try:
+            content, _ = self._get_file_from_github(adjustment_file)
+            if content:
+                adjustments = json.loads(content)
+                if username:
+                    return [adj for adj in adjustments if adj['username'] == username]
+                return adjustments
+            return []
+        except Exception as e:
+            return []
+    
+    def calculate_user_scores(self):
+        """Calculate scores for all users across all completed weeks, including manual adjustments"""
+        users = self.config.get_users()
+        user_scores = {}
+        
+        # Initialize scores
+        for username in users:
+            if username != "admin":  # Skip admin from leaderboard
+                user_scores[username] = {
+                    "display_name": users[username]["display_name"],
+                    "total_points": 0,
+                    "weeks_played": 0,
+                    "weekly_breakdown": {},
+                    "manual_adjustments": 0
+                }
+        
+        current_week = self.config.get_current_week()
+        
+        # Calculate points for each completed week (include current week if results exist)
+        for week in range(1, current_week + 1):
+            results = self.load_results(week)
+            if results is None or len(results) == 0:
+                continue  # Skip weeks without results
+            
+            predictions = self.load_predictions(week)
+            if not predictions:
+                continue  # Skip if no predictions found
+            
+            for username in user_scores:
+                if username in predictions:
+                    week_points = 0
+                    user_data = predictions[username]
+                    
+                    # Handle both old and new prediction formats
+                    if isinstance(user_data, dict) and "predictions" in user_data:
+                        user_predictions = user_data["predictions"]
+                    elif isinstance(user_data, list):
+                        user_predictions = user_data
+                    else:
+                        continue
+                    
+                    # Calculate points for each match
+                    for i, result_row in results.iterrows():
+                        if i < len(user_predictions):
+                            points = self.calculate_points(user_predictions[i], result_row)
+                            week_points += points
+                    
+                    user_scores[username]["total_points"] += week_points
+                    user_scores[username]["weeks_played"] += 1
+                    user_scores[username]["weekly_breakdown"][f"week_{week}"] = week_points
+        
+        # Add manual adjustments
+        all_adjustments = self.get_manual_adjustments()
+        for adjustment in all_adjustments:
+            username = adjustment['username']
+            if username in user_scores:
+                user_scores[username]["total_points"] += adjustment['points_change']
+                user_scores[username]["manual_adjustments"] += adjustment['points_change']
+        
+        return user_scores
 
 # Keep the original class name for backward compatibility
 class DataManager(GitHubDataManager):

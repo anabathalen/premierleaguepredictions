@@ -77,7 +77,7 @@ class GitHubConfigManager:
         if not users_content:
             default_users = {
                 "admin": {
-                    "password_hash": "admin_hash_here",  # You should hash this properly
+                    "passcode": "admin_hash_here",  # You should hash this properly
                     "display_name": "Administrator",
                     "is_admin": True,
                     "created_at": datetime.now().isoformat()
@@ -121,14 +121,14 @@ class GitHubConfigManager:
             print(f"Error loading users: {e}")
             return {}
     
-    def add_user(self, username, password_hash, display_name, is_admin=False):
+    def add_user(self, username, passcode, display_name, is_admin=False):
         """Add a new user"""
         try:
             users_content, sha = self._get_file_from_github(self.users_file)
             users = json.loads(users_content) if users_content else {}
             
             users[username] = {
-                "password_hash": password_hash,
+                "passcode": passcode,
                 "display_name": display_name,
                 "is_admin": is_admin,
                 "created_at": datetime.now().isoformat()
@@ -151,11 +151,11 @@ class GitHubConfigManager:
         users = self.get_users()
         return username in users
     
-    def verify_user(self, username, password_hash):
+    def verify_user(self, username, passcode):
         """Verify user credentials"""
         users = self.get_users()
         if username in users:
-            return users[username]["password_hash"] == password_hash
+            return users[username]["passcode"] == passcode
         return False
     
     def get_user_info(self, username):
