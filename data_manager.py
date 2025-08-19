@@ -430,8 +430,8 @@ class GitHubDataManager:
         
         current_week = self.config.get_current_week()
         
-        # Calculate points for each completed week (include current week if results exist)
-        for week in range(1, current_week + 1):
+        # Calculate points for each completed week (only previous weeks, not current week)
+        for week in range(1, current_week):
             results = self.load_results(week)
             if results is None or len(results) == 0:
                 continue  # Skip weeks without results
