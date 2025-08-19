@@ -510,6 +510,72 @@ def prediction_export_panel():
             except Exception as e:
                 st.error(f"Error generating export: {e}")
 
+def prediction_export_panel():
+    """Admin panel to export predictions to Excel"""
+    with st.expander("📊 Export Predictions"):
+        st.subheader("Export Predictions to Excel")
+        
+        current_week = config_manager.get_current_week()
+        
+        # Week selector for export
+        available_weeks = []
+        for week in range(1, current_week + 1):
+            predictions = data_manager.load_predictions(week)
+            if predictions:  # Only show weeks that have predictions
+                available_weeks.append(week)
+        
+        if not available_weeks:
+            st.info("No weeks with predictions available for export.")
+            return
+        
+        selected_week = st.selectbox(
+            "Select week to export:",
+            available_weeks,
+            index=len(available_weeks) - 1  # Default to latest week
+        )
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("📥 Export to Excel"):
+                try:
+                    workbook = data_manager.export_predictions_to_excel(selected_week)
+                    
+                    if workbook:
+                        # Save to bytes buffer
+                        from io import BytesIO
+                        buffer = BytesIO()
+                        workbook.save(buffer)
+                        buffer.seek(0)
+                        
+                        # Create download button
+                        st.download_button(
+                            label="⬇️ Download Excel File",
+                            data=buffer,
+                            file_name=f"Week_{selected_week}_Predictions.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+                        
+                        st.success(f"Excel file ready for download!")
+                        
+                        # Show preview
+                        predictions = data_manager.load_predictions(selected_week)
+                        st.write(f"**Preview:** {len(predictions)} users made predictions for week {selected_week}")
+                        
+                    else:
+                        st.error("Failed to create Excel file.")
+                        
+                except Exception as e:
+                    st.error(f"Error exporting predictions: {e}")
+        
+        with col2:
+            # Show current week status
+            st.write("**Week Status:**")
+            for week in available_weeks[-5:]:  # Show last 5 weeks
+                predictions = data_manager.load_predictions(week)
+                user_count = len([u for u in predictions.keys() if u != "admin"])
+                st.write(f"Week {week}: {user_count} predictions")
+
 def front_page_management_panel():
     """Admin panel to manage front page message"""
     with st.expander("📢 Front Page Message"):

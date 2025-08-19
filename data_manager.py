@@ -140,7 +140,24 @@ class GitHubDataManager:
             content, _ = self._get_file_from_github(file_path)
             if content:
                 from io import StringIO
-                return pd.read_csv(StringIO(content))
+                # Handle both comma and tab-separated files
+                # First try comma separator
+                try:
+                    df = pd.read_csv(StringIO(content))
+                except:
+                    # If that fails, try tab separator
+                    df = pd.read_csv(StringIO(content), sep='\t')
+                
+                # Clean up column names (remove extra whitespace)
+                df.columns = df.columns.str.strip()
+                
+                # Ensure we have the expected columns
+                expected_cols = ['home_team', 'away_team', 'home_score', 'away_score']
+                if not all(col in df.columns for col in expected_cols):
+                    st.error(f"Week {week_num} results file missing required columns. Found: {list(df.columns)}, Expected: {expected_cols}")
+                    return None
+                
+                return df
             return None
         except Exception as e:
             st.error(f"Error loading results for week {week_num}: {e}")
@@ -455,6 +472,94 @@ class GitHubDataManager:
                 user_scores[username]["manual_adjustments"] += adjustment['points_change']
         
         return user_scores
+    
+    def export_predictions_to_excel(self, week_num):
+        """Export all predictions for a week to an Excel file"""
+        try:
+            # Load predictions and fixtures
+            predictions = self.load_predictions(week_num)
+            fixtures = self.load_fixtures(week_num)
+            
+            if not predictions or fixtures is None:
+                return None
+            
+            # Create a workbook and worksheet
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, Alignment, PatternFill
+            
+            wb = Workbook()
+            ws = wb.active
+            ws.title = f"Week {week_num} Predictions"
+            
+            # Headers
+            headers = ["Match", "Home Team", "Away Team"]
+            
+            # Get all users who made predictions
+            users = list(predictions.keys())
+            if "admin" in users:
+                users.remove("admin")  # Remove admin from export
+            
+            # Add user columns
+            for username in users:
+                user_info = self.config.get_users().get(username, {})
+                display_name = user_info.get("display_name", username)
+                headers.append(display_name)
+            
+            # Write headers
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.font = Font(bold=True)
+                cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+                cell.alignment = Alignment(horizontal="center")
+            
+            # Write match data
+            for match_idx, (_, fixture) in enumerate(fixtures.iterrows()):
+                row = match_idx + 2
+                
+                # Match info
+                ws.cell(row=row, column=1, value=match_idx + 1)
+                ws.cell(row=row, column=2, value=fixture['home_team'])
+                ws.cell(row=row, column=3, value=fixture['away_team'])
+                
+                # User predictions
+                for user_idx, username in enumerate(users):
+                    col = user_idx + 4
+                    
+                    user_data = predictions.get(username, {})
+                    if isinstance(user_data, dict) and "predictions" in user_data:
+                        user_predictions = user_data["predictions"]
+                    elif isinstance(user_data, list):
+                        user_predictions = user_data
+                    else:
+                        user_predictions = []
+                    
+                    if match_idx < len(user_predictions):
+                        pred = user_predictions[match_idx]
+                        prediction_text = f"{pred.get('home_score', 0)}-{pred.get('away_score', 0)}"
+                        ws.cell(row=row, column=col, value=prediction_text)
+                        ws.cell(row=row, column=col).alignment = Alignment(horizontal="center")
+                    else:
+                        ws.cell(row=row, column=col, value="No prediction")
+                        ws.cell(row=row, column=col).alignment = Alignment(horizontal="center")
+            
+            # Auto-adjust column widths
+            for column in ws.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 20)
+                ws.column_dimensions[column_letter].width = adjusted_width
+            
+            return wb
+            
+        except Exception as e:
+            st.error(f"Error creating Excel export: {e}")
+            return None
 
 # Keep the original class name for backward compatibility
 class DataManager(GitHubDataManager):

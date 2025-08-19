@@ -1,11 +1,11 @@
-home_team,	away_team,	home_score,	away_score
-Liverpool,	Bournemouth,	4,	2
-Aston Villa,	Newcastle,	0,	0
-Brighton,	Fulham,	1,	1
-Sunderland,	West Ham,	3,	0
-Tottenham,	Burnley,	3,	0
-Wolves,	Man City,	0,	4
-Chelsea,	Crystal Palace,	0,	0
-Nottingham Forest,	Brentford,	3,	1
-Man United,	Arsenal,	1,	0
-Leeds United,	Everton,	1,	0
+home_team,away_team,home_score,away_score
+Liverpool,Bournemouth,4,2
+Aston Villa,Newcastle,0,0
+Brighton,Fulham,1,1
+Sunderland,West Ham,3,0
+Tottenham,Burnley,3,0
+Wolves,Man City,0,4
+Chelsea,Crystal Palace,0,0
+Nottingham Forest,Brentford,3,1
+Man United,Arsenal,1,0
+Leeds United,Everton,1,0
