@@ -649,14 +649,12 @@ def display_leaderboard():
     # Create leaderboard dataframe
     df_data = []
     for i, user in enumerate(leaderboard):
-        manual_adj = user.get("manual_adjustments", 0)
         df_data.append({
             "Pos": i + 1,
             "Player": user["display_name"],
             "Points": user["total_points"],
             "Weeks": user["weeks_played"],
-            "Avg": user["average_points"],
-            "Manual": f"{manual_adj:+d}" if manual_adj != 0 else ""
+            "Avg": user["average_points"]
         })
     
     df = pd.DataFrame(df_data)
