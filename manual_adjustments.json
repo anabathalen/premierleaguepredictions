@@ -33,5 +33,12 @@
     "reason": "Didn't explain rules",
     "admin_user": "admin",
     "timestamp": "2025-08-26T14:03:35.267746"
+  },
+  {
+    "username": "josh",
+    "points_change": 2,
+    "reason": "User forgot",
+    "admin_user": "admin",
+    "timestamp": "2025-08-26T14:04:22.464578"
   }
 ]
