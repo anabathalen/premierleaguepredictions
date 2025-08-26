@@ -5,5 +5,12 @@
     "reason": "Missed first game",
     "admin_user": "admin",
     "timestamp": "2025-08-19T07:58:17.418486"
+  },
+  {
+    "username": "lea",
+    "points_change": 3,
+    "reason": "Didn't give a login",
+    "admin_user": "admin",
+    "timestamp": "2025-08-26T14:00:49.610089"
   }
 ]
