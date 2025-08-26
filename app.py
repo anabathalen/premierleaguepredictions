@@ -150,8 +150,16 @@ def admin_panel():
                               value=current_week)
     
     if st.button("Update Week"):
+        old_week = current_week
         config_manager.set_current_week(new_week)
-        st.success(f"Week updated to {new_week}")
+        st.success(f"Week updated from {old_week} to {new_week}")
+        
+        # Show information about leaderboard recalculation
+        if new_week > old_week:
+            st.info(f"📊 Leaderboard will now include results through Week {new_week - 1}")
+        elif new_week < old_week:
+            st.info(f"📊 Leaderboard will now only include results through Week {new_week - 1}")
+        
         st.rerun()
     
     st.markdown("#### Prediction Settings")
@@ -173,6 +181,21 @@ def admin_panel():
     st.write(f"Week {current_week} fixtures: {'✅' if fixtures_exist else '❌'}")
     st.write(f"Week {current_week} results: {'✅' if results_exist else '❌'}")
     st.write(f"Predictions: {'✅ Open' if predictions_open else '❌ Closed'}")
+    
+    # Show leaderboard calculation info
+    if current_week > 1:
+        st.markdown("#### Leaderboard Info")
+        st.write(f"📊 Current leaderboard includes completed weeks: 1 to {current_week - 1}")
+        
+        # Check how many weeks have results
+        completed_weeks = 0
+        for week in range(1, current_week):
+            if data_manager.load_results(week) is not None:
+                completed_weeks += 1
+        
+        st.write(f"📈 Weeks with results uploaded: {completed_weeks} out of {current_week - 1}")
+    else:
+        st.write("📊 No completed weeks yet - leaderboard will show after Week 1 results are uploaded")
 
 def user_management_panel():
     """Admin panel for managing users"""
