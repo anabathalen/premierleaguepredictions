@@ -19,5 +19,12 @@
     "reason": "Didn't give a login",
     "admin_user": "admin",
     "timestamp": "2025-08-26T14:01:37.171026"
+  },
+  {
+    "username": "joe",
+    "points_change": -3,
+    "reason": "accidentally awarded points",
+    "admin_user": "admin",
+    "timestamp": "2025-08-26T14:02:26.568616"
   }
 ]
