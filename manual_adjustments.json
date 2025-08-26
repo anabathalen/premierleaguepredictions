@@ -12,5 +12,12 @@
     "reason": "Didn't give a login",
     "admin_user": "admin",
     "timestamp": "2025-08-26T14:00:49.610089"
+  },
+  {
+    "username": "joe",
+    "points_change": 3,
+    "reason": "Didn't give a login",
+    "admin_user": "admin",
+    "timestamp": "2025-08-26T14:01:37.171026"
   }
 ]
