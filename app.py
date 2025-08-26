@@ -174,9 +174,9 @@ def admin_panel():
         st.rerun()
     
     st.markdown("#### File Status")
-    # Check what files exist
-    fixtures_exist = os.path.exists(f"fixtures/week{current_week}.csv")
-    results_exist = os.path.exists(f"results/week{current_week}.csv")
+    # Check what files exist in GitHub (not local files)
+    fixtures_exist = data_manager.load_fixtures(current_week) is not None
+    results_exist = data_manager.load_results(current_week) is not None
     
     st.write(f"Week {current_week} fixtures: {'✅' if fixtures_exist else '❌'}")
     st.write(f"Week {current_week} results: {'✅' if results_exist else '❌'}")
@@ -305,17 +305,38 @@ def results_management_panel():
                         # Create results DataFrame
                         results_df = pd.DataFrame(results_data)
                         
+                        # Debug: Show what we're trying to save
+                        st.write("**Debug: Attempting to save results:**")
+                        st.dataframe(results_df)
+                        
                         # Save results using data manager (saves to GitHub)
-                        success = data_manager.save_results(selected_week, results_df)
+                        with st.spinner("Saving results to GitHub..."):
+                            success = data_manager.save_results(selected_week, results_df)
                         
                         if success:
-                            st.success(f"Results saved for week {selected_week}!")
+                            st.success(f"✅ Results saved for week {selected_week}!")
+                            
+                            # Verify the save by loading the results back
+                            with st.spinner("Verifying save..."):
+                                verification = data_manager.load_results(selected_week)
+                                if verification is not None:
+                                    st.success("✅ Verification successful - results were saved to GitHub!")
+                                    st.write("**Saved data verification:**")
+                                    st.dataframe(verification.head())
+                                else:
+                                    st.error("❌ Verification failed - results not found after save")
+                            
                             st.rerun()
                         else:
-                            st.error("Failed to save results. Check GitHub configuration.")
+                            st.error("❌ Failed to save results. Check GitHub configuration and secrets.")
                         
                     except Exception as e:
-                        st.error(f"Error saving results: {e}")
+                        st.error(f"❌ Error saving results: {e}")
+                        st.write("**Debug info:**")
+                        st.write(f"Selected week: {selected_week}")
+                        st.write(f"Results data: {results_data}")
+                        import traceback
+                        st.code(traceback.format_exc())
 
 def score_management_panel():
     """Admin panel to manually adjust user scores"""

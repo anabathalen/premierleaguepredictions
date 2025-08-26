@@ -366,11 +366,22 @@ class GitHubDataManager:
             _, sha = self._get_file_from_github(file_path)
             if sha:
                 commit_message = f"Update results for Week {week_num}"
+                print(f"Updating existing file with SHA: {sha}")
+            else:
+                print(f"Creating new file: {file_path}")
+            
+            print(f"Saving to GitHub: {file_path}")
+            print(f"Content preview: {csv_content[:200]}...")
             
             self._save_file_to_github(file_path, csv_content, commit_message, sha)
+            print(f"Successfully saved results for week {week_num}")
             return True
         except Exception as e:
-            st.error(f"Error saving results for week {week_num}: {e}")
+            print(f"Error saving results for week {week_num}: {e}")
+            import traceback
+            print(traceback.format_exc())
+            if hasattr(st, 'error'):
+                st.error(f"Error saving results for week {week_num}: {e}")
             return False
     
     def debug_encryption_status(self):
