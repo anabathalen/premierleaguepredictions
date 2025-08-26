@@ -112,11 +112,21 @@ class GitHubDataManager:
         if sha:
             data['sha'] = sha
         
+        print(f"Attempting to save to GitHub: {url}")
+        print(f"Data keys: {list(data.keys())}")
+        print(f"Content length: {len(content)} characters")
+        
         response = requests.put(url, headers=self.headers, json=data)
         
+        print(f"GitHub API Response Status: {response.status_code}")
+        print(f"GitHub API Response: {response.text[:500]}...")
+        
         if response.status_code in [200, 201]:
+            print("✅ Successfully saved to GitHub")
             return response.json()
         else:
+            print(f"❌ GitHub API Error: {response.status_code}")
+            print(f"Response: {response.text}")
             response.raise_for_status()
     
     def load_fixtures(self, week_num):
@@ -362,6 +372,8 @@ class GitHubDataManager:
             csv_content = results_df.to_csv(index=False)
             commit_message = f"Add results for Week {week_num}"
             
+            print(f"Starting save process for {file_path}")
+            
             # Check if file already exists
             _, sha = self._get_file_from_github(file_path)
             if sha:
@@ -373,15 +385,27 @@ class GitHubDataManager:
             print(f"Saving to GitHub: {file_path}")
             print(f"Content preview: {csv_content[:200]}...")
             
-            self._save_file_to_github(file_path, csv_content, commit_message, sha)
+            # This will now show detailed GitHub API response
+            result = self._save_file_to_github(file_path, csv_content, commit_message, sha)
+            print(f"GitHub save result: {result}")
             print(f"Successfully saved results for week {week_num}")
             return True
+            
+        except requests.exceptions.RequestException as e:
+            error_msg = f"GitHub API error saving results for week {week_num}: {e}"
+            print(error_msg)
+            if hasattr(st, 'error'):
+                st.error(error_msg)
+            return False
+            
         except Exception as e:
-            print(f"Error saving results for week {week_num}: {e}")
+            error_msg = f"Unexpected error saving results for week {week_num}: {e}"
+            print(error_msg)
             import traceback
             print(traceback.format_exc())
             if hasattr(st, 'error'):
-                st.error(f"Error saving results for week {week_num}: {e}")
+                st.error(error_msg)
+                st.code(traceback.format_exc())
             return False
     
     def debug_encryption_status(self):

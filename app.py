@@ -111,6 +111,37 @@ def main():
                         st.write("❌ Admin user not found")
                 except Exception as e:
                     st.write(f"Error loading users: {e}")
+                
+                # Test GitHub configuration
+                st.write("**GitHub Configuration:**")
+                try:
+                    github_token = data_manager._get_secret('GITHUB_TOKEN')
+                    github_repo_owner = data_manager._get_secret('GITHUB_REPO_OWNER')
+                    github_repo_name = data_manager._get_secret('GITHUB_REPO_NAME')
+                    
+                    st.write(f"GITHUB_TOKEN: {'✅ Set' if github_token else '❌ Not set'}")
+                    st.write(f"GITHUB_REPO_OWNER: {'✅ ' + github_repo_owner if github_repo_owner else '❌ Not set'}")
+                    st.write(f"GITHUB_REPO_NAME: {'✅ ' + github_repo_name if github_repo_name else '❌ Not set'}")
+                    
+                    if all([github_token, github_repo_owner, github_repo_name]):
+                        st.write("✅ GitHub configuration complete")
+                    else:
+                        st.write("❌ GitHub configuration incomplete")
+                        
+                except Exception as e:
+                    st.write(f"Error checking GitHub config: {e}")
+                
+                # Test GitHub connection
+                if st.button("Test GitHub Connection"):
+                    try:
+                        # Try to get a simple file from GitHub
+                        test_result = data_manager._get_file_from_github("settings.json")
+                        if test_result[0] is not None:
+                            st.success("✅ GitHub connection successful!")
+                        else:
+                            st.warning("⚠️ GitHub connected but settings.json not found")
+                    except Exception as e:
+                        st.error(f"❌ GitHub connection failed: {e}")
         
         if st.button("Logout"):
             auth_manager.logout()
