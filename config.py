@@ -102,6 +102,7 @@ class GitHubConfigManager:
                     "goal_difference": POINTS_GOAL_DIFFERENCE
                 },
                 "front_page_blurb": "",
+                "predictions_open": True,
                 "settings_updated_at": datetime.now().isoformat()
             }
             self._save_file_to_github(
@@ -251,6 +252,26 @@ class GitHubConfigManager:
             self.settings_file,
             json.dumps(settings, indent=2),
             "Update front page blurb",
+            sha
+        )
+        return True
+    
+    def are_predictions_open(self):
+        """Check if predictions are currently being accepted"""
+        settings = self.get_league_settings()
+        return settings.get("predictions_open", True)
+    
+    def set_predictions_open(self, open_status):
+        """Set whether predictions are being accepted"""
+        content, sha = self._get_file_from_github(self.settings_file)
+        settings = json.loads(content) if content else {}
+        settings["predictions_open"] = open_status
+        settings["settings_updated_at"] = datetime.now().isoformat()
+        
+        self._save_file_to_github(
+            self.settings_file,
+            json.dumps(settings, indent=2),
+            f"Set predictions open to {open_status}",
             sha
         )
         return True

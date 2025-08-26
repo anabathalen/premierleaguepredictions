@@ -128,13 +128,16 @@ def main():
     st.markdown("---")
     
     # Navigation
-    tab1, tab2 = st.tabs(["📊 LEADERBOARD", "⚽ DO PREDICTIONS"])
+    tab1, tab2, tab3 = st.tabs(["📊 LEADERBOARD", "⚽ DO PREDICTIONS", "📜 MY PREDICTIONS"])
     
     with tab1:
         display_leaderboard()
     
     with tab2:
         prediction_form(current_week, current_user['username'])
+    
+    with tab3:
+        view_user_predictions(current_user['username'])
 
 def admin_panel():
     """Admin control panel"""
@@ -151,6 +154,17 @@ def admin_panel():
         st.success(f"Week updated to {new_week}")
         st.rerun()
     
+    st.markdown("#### Prediction Settings")
+    predictions_open = config_manager.are_predictions_open()
+    
+    new_predictions_status = st.checkbox("Accept Predictions", value=predictions_open)
+    
+    if st.button("Update Prediction Settings"):
+        config_manager.set_predictions_open(new_predictions_status)
+        status_text = "open" if new_predictions_status else "closed"
+        st.success(f"Predictions are now {status_text}")
+        st.rerun()
+    
     st.markdown("#### File Status")
     # Check what files exist
     fixtures_exist = os.path.exists(f"fixtures/week{current_week}.csv")
@@ -158,6 +172,7 @@ def admin_panel():
     
     st.write(f"Week {current_week} fixtures: {'✅' if fixtures_exist else '❌'}")
     st.write(f"Week {current_week} results: {'✅' if results_exist else '❌'}")
+    st.write(f"Predictions: {'✅ Open' if predictions_open else '❌ Closed'}")
 
 def user_management_panel():
     """Admin panel for managing users"""
@@ -267,15 +282,14 @@ def results_management_panel():
                         # Create results DataFrame
                         results_df = pd.DataFrame(results_data)
                         
-                        # Create results directory if it doesn't exist
-                        os.makedirs("results", exist_ok=True)
+                        # Save results using data manager (saves to GitHub)
+                        success = data_manager.save_results(selected_week, results_df)
                         
-                        # Save results file
-                        results_file = f"results/week{selected_week}.csv"
-                        results_df.to_csv(results_file, index=False)
-                        
-                        st.success(f"Results saved for week {selected_week}!")
-                        st.rerun()
+                        if success:
+                            st.success(f"Results saved for week {selected_week}!")
+                            st.rerun()
+                        else:
+                            st.error("Failed to save results. Check GitHub configuration.")
                         
                     except Exception as e:
                         st.error(f"Error saving results: {e}")
@@ -648,13 +662,14 @@ def display_leaderboard():
     
     # Create leaderboard dataframe
     df_data = []
+    current_week = config_manager.get_current_week()
+    
     for i, user in enumerate(leaderboard):
         df_data.append({
             "Pos": i + 1,
             "Player": user["display_name"],
             "Points": user["total_points"],
-            "Weeks": user["weeks_played"],
-            "Avg": user["average_points"]
+            "Last Week": user["current_week_points"] if current_week > 1 else 0
         })
     
     df = pd.DataFrame(df_data)
@@ -687,6 +702,13 @@ def display_leaderboard():
 
 def prediction_form(week_num, username):
     st.subheader(f"⚽ Week {week_num} Predictions")
+    
+    # Check if predictions are open
+    if not config_manager.are_predictions_open():
+        st.error("🔒 Predictions are currently closed!")
+        st.info("Contact the admin if you think this is a mistake.")
+        return
+    
     fixtures = data_manager.load_fixtures(week_num)
     if fixtures is None:
         st.error(f"Fixtures for week {week_num} not found! Please contact admin.")
@@ -750,6 +772,82 @@ def prediction_form(week_num, username):
             if "edit_predictions" in st.session_state:
                 del st.session_state.edit_predictions
             st.rerun()
+
+
+def view_user_predictions(username):
+    """Display user's predictions for any given week"""
+    st.subheader("📜 Your Prediction History")
+    
+    current_week = config_manager.get_current_week()
+    
+    # Week selector
+    selected_week = st.selectbox(
+        "Select Week to View:",
+        options=list(range(1, current_week + 1)),
+        index=current_week - 1 if current_week > 1 else 0
+    )
+    
+    # Get user's predictions for the selected week
+    user_predictions = data_manager.get_user_predictions_for_week(username, selected_week)
+    
+    if user_predictions is None:
+        st.info(f"No predictions found for Week {selected_week}")
+        return
+    
+    if not user_predictions:
+        st.info(f"You haven't made predictions for Week {selected_week} yet")
+        return
+    
+    st.subheader(f"Your Predictions for Week {selected_week}")
+    
+    # Display predictions in a nice format
+    for pred in user_predictions:
+        col1, col2, col3 = st.columns([3, 1, 3])
+        
+        with col1:
+            st.write(f"**{pred['home_team']}**")
+        
+        with col2:
+            st.write(f"**{pred['predicted_home_score']}-{pred['predicted_away_score']}**")
+        
+        with col3:
+            st.write(f"**{pred['away_team']}**")
+    
+    # Check if results are available for this week
+    results = data_manager.load_results(selected_week)
+    if results is not None and len(results) > 0:
+        st.markdown("---")
+        st.subheader(f"Actual Results for Week {selected_week}")
+        
+        total_points = 0
+        for i, (_, result) in enumerate(results.iterrows()):
+            if i < len(user_predictions):
+                pred = user_predictions[i]
+                
+                # Calculate points for this match
+                prediction_data = {
+                    'home_score': pred['predicted_home_score'],
+                    'away_score': pred['predicted_away_score']
+                }
+                points = data_manager.calculate_points(prediction_data, result)
+                total_points += points
+                
+                col1, col2, col3, col4 = st.columns([3, 1, 3, 1])
+                
+                with col1:
+                    st.write(f"{result['home_team']}")
+                
+                with col2:
+                    st.write(f"**{int(result['home_score'])}-{int(result['away_score'])}**")
+                
+                with col3:
+                    st.write(f"{result['away_team']}")
+                
+                with col4:
+                    st.write(f"**{points} pts**")
+        
+        st.markdown("---")
+        st.write(f"**Total Points for Week {selected_week}: {total_points}**")
 
 
 if __name__ == "__main__":

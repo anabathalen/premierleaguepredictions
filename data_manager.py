@@ -281,17 +281,26 @@ class GitHubDataManager:
     def get_leaderboard(self):
         """Get leaderboard sorted by total points"""
         user_scores = self.calculate_user_scores()
+        current_week = self.config.get_current_week()
         
         # Convert to list and sort by total points
         leaderboard = []
         for username, data in user_scores.items():
             avg_points = data["total_points"] / max(data["weeks_played"], 1)
+            
+            # Get current week points (if available)
+            current_week_points = 0
+            if current_week > 1:  # Only show current week points if we're past week 1
+                previous_week = current_week - 1
+                current_week_points = data["weekly_breakdown"].get(f"week_{previous_week}", 0)
+            
             leaderboard.append({
                 "username": username,
                 "display_name": data["display_name"],
                 "total_points": data["total_points"],
                 "weeks_played": data["weeks_played"],
                 "average_points": round(avg_points, 2),
+                "current_week_points": current_week_points,
                 "weekly_breakdown": data["weekly_breakdown"],
                 "manual_adjustments": data.get("manual_adjustments", 0)
             })
@@ -302,6 +311,31 @@ class GitHubDataManager:
         """Check if user has already made predictions for a week"""
         predictions = self.load_predictions(week_num, username)
         return len(predictions) > 0
+    
+    def get_user_predictions_for_week(self, username, week_num):
+        """Get user's predictions for a specific week with fixtures"""
+        try:
+            predictions = self.load_predictions(week_num, username)
+            fixtures = self.load_fixtures(week_num)
+            
+            if not predictions or fixtures is None:
+                return None
+            
+            # Combine predictions with fixtures
+            result = []
+            for i, (_, fixture) in enumerate(fixtures.iterrows()):
+                if i < len(predictions):
+                    result.append({
+                        "home_team": fixture['home_team'],
+                        "away_team": fixture['away_team'],
+                        "predicted_home_score": predictions[i]['home_score'],
+                        "predicted_away_score": predictions[i]['away_score']
+                    })
+                    
+            return result
+        except Exception as e:
+            print(f"Error getting user predictions for week {week_num}: {e}")
+            return None
     
     def save_fixtures(self, week_num, fixtures_df):
         """Save fixtures for a week to GitHub"""
