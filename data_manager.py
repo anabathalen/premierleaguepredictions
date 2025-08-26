@@ -112,22 +112,14 @@ class GitHubDataManager:
         if sha:
             data['sha'] = sha
         
-        print(f"Attempting to save to GitHub: {url}")
-        print(f"Data keys: {list(data.keys())}")
-        print(f"Content length: {len(content)} characters")
-        
         response = requests.put(url, headers=self.headers, json=data)
         
-        print(f"GitHub API Response Status: {response.status_code}")
-        print(f"GitHub API Response: {response.text[:500]}...")
-        
         if response.status_code in [200, 201]:
-            print("✅ Successfully saved to GitHub")
             return response.json()
         else:
-            print(f"❌ GitHub API Error: {response.status_code}")
-            print(f"Response: {response.text}")
-            response.raise_for_status()
+            # Raise an exception with the actual error details
+            error_msg = f"GitHub API Error {response.status_code}: {response.text}"
+            raise requests.exceptions.RequestException(error_msg)
     
     def load_fixtures(self, week_num):
         """Load fixtures for a specific week from GitHub"""
@@ -368,45 +360,24 @@ class GitHubDataManager:
     def save_results(self, week_num, results_df):
         """Save results for a week to GitHub"""
         file_path = f"results/week{week_num}.csv"
-        try:
-            csv_content = results_df.to_csv(index=False)
-            commit_message = f"Add results for Week {week_num}"
-            
-            print(f"Starting save process for {file_path}")
-            
-            # Check if file already exists
-            _, sha = self._get_file_from_github(file_path)
-            if sha:
-                commit_message = f"Update results for Week {week_num}"
-                print(f"Updating existing file with SHA: {sha}")
-            else:
-                print(f"Creating new file: {file_path}")
-            
-            print(f"Saving to GitHub: {file_path}")
-            print(f"Content preview: {csv_content[:200]}...")
-            
-            # This will now show detailed GitHub API response
-            result = self._save_file_to_github(file_path, csv_content, commit_message, sha)
-            print(f"GitHub save result: {result}")
-            print(f"Successfully saved results for week {week_num}")
-            return True
-            
-        except requests.exceptions.RequestException as e:
-            error_msg = f"GitHub API error saving results for week {week_num}: {e}"
-            print(error_msg)
-            if hasattr(st, 'error'):
-                st.error(error_msg)
-            return False
-            
-        except Exception as e:
-            error_msg = f"Unexpected error saving results for week {week_num}: {e}"
-            print(error_msg)
-            import traceback
-            print(traceback.format_exc())
-            if hasattr(st, 'error'):
-                st.error(error_msg)
-                st.code(traceback.format_exc())
-            return False
+        
+        csv_content = results_df.to_csv(index=False)
+        commit_message = f"Add results for Week {week_num}"
+        
+        # Check if file already exists
+        _, sha = self._get_file_from_github(file_path)
+        if sha:
+            commit_message = f"Update results for Week {week_num}"
+        
+        # Save to GitHub
+        self._save_file_to_github(file_path, csv_content, commit_message, sha)
+        
+        # Verify the save by attempting to load the file back
+        verification_content, _ = self._get_file_from_github(file_path)
+        if verification_content is None:
+            raise Exception("File was not saved to GitHub - verification failed")
+        
+        return True
     
     def debug_encryption_status(self):
         """Debug method to check encryption setup and test decryption"""

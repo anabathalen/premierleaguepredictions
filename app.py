@@ -336,38 +336,21 @@ def results_management_panel():
                         # Create results DataFrame
                         results_df = pd.DataFrame(results_data)
                         
-                        # Debug: Show what we're trying to save
-                        st.write("**Debug: Attempting to save results:**")
-                        st.dataframe(results_df)
-                        
                         # Save results using data manager (saves to GitHub)
                         with st.spinner("Saving results to GitHub..."):
-                            success = data_manager.save_results(selected_week, results_df)
+                            data_manager.save_results(selected_week, results_df)
                         
-                        if success:
-                            st.success(f"✅ Results saved for week {selected_week}!")
-                            
-                            # Verify the save by loading the results back
-                            with st.spinner("Verifying save..."):
-                                verification = data_manager.load_results(selected_week)
-                                if verification is not None:
-                                    st.success("✅ Verification successful - results were saved to GitHub!")
-                                    st.write("**Saved data verification:**")
-                                    st.dataframe(verification.head())
-                                else:
-                                    st.error("❌ Verification failed - results not found after save")
-                            
-                            st.rerun()
-                        else:
-                            st.error("❌ Failed to save results. Check GitHub configuration and secrets.")
+                        st.success(f"✅ Results saved for week {selected_week}!")
+                        st.rerun()
                         
                     except Exception as e:
-                        st.error(f"❌ Error saving results: {e}")
-                        st.write("**Debug info:**")
-                        st.write(f"Selected week: {selected_week}")
-                        st.write(f"Results data: {results_data}")
-                        import traceback
-                        st.code(traceback.format_exc())
+                        st.error(f"❌ Failed to save results: {str(e)}")
+                        if "GitHub API Error" in str(e):
+                            st.error("Check your GitHub token permissions and repository settings.")
+                        elif "verification failed" in str(e):
+                            st.error("Results were not properly saved to GitHub.")
+                        else:
+                            st.error("Please check your GitHub configuration in Streamlit secrets.")
 
 def score_management_panel():
     """Admin panel to manually adjust user scores"""
