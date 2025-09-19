@@ -480,6 +480,10 @@ class GitHubDataManager:
             if not predictions:
                 continue  # Skip if no predictions found
             
+            # First pass: calculate scores for users who made predictions
+            weekly_scores = {}
+            users_who_predicted = []
+            
             for username in user_scores:
                 if username in predictions:
                     week_points = 0
@@ -499,9 +503,26 @@ class GitHubDataManager:
                             points = self.calculate_points(user_predictions[i], result_row)
                             week_points += points
                     
-                    user_scores[username]["total_points"] += week_points
-                    user_scores[username]["weeks_played"] += 1
-                    user_scores[username]["weekly_breakdown"][f"week_{week}"] = week_points
+                    weekly_scores[username] = week_points
+                    users_who_predicted.append(username)
+            
+            # Find the worst score among users who predicted
+            worst_score = 0
+            if weekly_scores:
+                worst_score = min(weekly_scores.values())
+            
+            # Second pass: assign scores to all users
+            for username in user_scores:
+                if username in weekly_scores:
+                    # User made predictions - use their calculated score
+                    week_points = weekly_scores[username]
+                else:
+                    # User didn't make predictions - give them the worst score
+                    week_points = worst_score
+                
+                user_scores[username]["total_points"] += week_points
+                user_scores[username]["weeks_played"] += 1
+                user_scores[username]["weekly_breakdown"][f"week_{week}"] = week_points
         
         # Add manual adjustments
         all_adjustments = self.get_manual_adjustments()
