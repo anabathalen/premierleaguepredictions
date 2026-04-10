@@ -1,6 +1,7 @@
 import streamlit as st
 import sys
 import os
+from config import verify_passcode
 
 # Ensure proper imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -15,7 +16,7 @@ class AuthManager:
         """Authenticate user credentials"""
         try:
             users = self.config.get_users()
-            if username in users and users[username]["passcode"] == passcode:
+            if username in users and verify_passcode(passcode, users[username]["passcode"]):
                 return {
                     "username": username,
                     "display_name": users[username]["display_name"],

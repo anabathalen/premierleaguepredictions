@@ -2,12 +2,47 @@ import json
 import os
 import base64
 import requests
+import hashlib
+import hmac
+import secrets
 from datetime import datetime
 
 # Points configuration
 POINTS_EXACT_SCORE = 2
 POINTS_CORRECT_RESULT = 1
 POINTS_GOAL_DIFFERENCE = 0
+
+PBKDF2_ALGO = "pbkdf2_sha256"
+PBKDF2_ITERATIONS = 390000
+
+def hash_passcode(passcode, iterations=PBKDF2_ITERATIONS):
+    """Hash a passcode using PBKDF2-SHA256 (passlib-style format)."""
+    if passcode is None:
+        return ""
+
+    salt_bytes = secrets.token_bytes(16)
+    salt_b64 = base64.urlsafe_b64encode(salt_bytes).decode("utf-8")
+    dk = hashlib.pbkdf2_hmac("sha256", passcode.encode("utf-8"), salt_bytes, iterations)
+    hash_b64 = base64.urlsafe_b64encode(dk).decode("utf-8")
+    return f"{PBKDF2_ALGO}${iterations}${salt_b64}${hash_b64}"
+
+def verify_passcode(passcode, stored_value):
+    """Verify a passcode against a stored hash or plaintext value."""
+    if stored_value is None:
+        return False
+
+    if stored_value.startswith(f"{PBKDF2_ALGO}$"):
+        try:
+            _, iterations_str, salt_b64, hash_b64 = stored_value.split("$", 3)
+            iterations = int(iterations_str)
+            salt_bytes = base64.urlsafe_b64decode(salt_b64.encode("utf-8"))
+            expected = base64.urlsafe_b64decode(hash_b64.encode("utf-8"))
+            dk = hashlib.pbkdf2_hmac("sha256", passcode.encode("utf-8"), salt_bytes, iterations)
+            return hmac.compare_digest(dk, expected)
+        except Exception:
+            return False
+
+    return stored_value == passcode
 
 class GitHubConfigManager:
     def __init__(self):
@@ -129,7 +164,7 @@ class GitHubConfigManager:
             users = json.loads(users_content) if users_content else {}
             
             users[username] = {
-                "passcode": passcode,
+                "passcode": hash_passcode(passcode),
                 "display_name": display_name,
                 "is_admin": is_admin,
                 "created_at": datetime.now().isoformat()
@@ -156,7 +191,7 @@ class GitHubConfigManager:
         """Verify user credentials"""
         users = self.get_users()
         if username in users:
-            return users[username]["passcode"] == passcode
+            return verify_passcode(passcode, users[username]["passcode"])
         return False
     
     def get_user_info(self, username):
