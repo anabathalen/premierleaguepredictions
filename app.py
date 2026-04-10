@@ -74,75 +74,6 @@ def main():
     with st.sidebar:
         st.write(f"Welcome, {current_user['display_name']}!")
         
-        if auth_manager.is_admin():
-            st.markdown("### Admin Controls")
-            admin_panel()
-            st.markdown("### User Management")
-            user_management_panel()
-            st.markdown("### Score Management")
-            score_management_panel()
-            st.markdown("### Results Management")
-            results_management_panel()
-            st.markdown("### Prediction Export")
-            prediction_export_panel()
-            st.markdown("### Front Page Settings")
-            front_page_management_panel()
-            
-            # Only show debug info for admin
-            with st.expander("🔧 Debug Info"):
-                if st.button("Reset Users File"):
-                    if os.path.exists("users.json"):
-                        os.remove("users.json")
-                    config_manager.initialize_users()
-                    st.success("Users file reset!")
-                    st.rerun()
-                
-                # Show file status
-                st.write("File status:")
-                st.write(f"users.json exists: {os.path.exists('users.json')}")
-                
-                # Test encryption
-                try:
-                    users = config_manager.get_users()
-                    st.write(f"Users loaded: {len(users)} users")
-                    if "admin" in users:
-                        st.write("✅ Admin user found")
-                    else:
-                        st.write("❌ Admin user not found")
-                except Exception as e:
-                    st.write(f"Error loading users: {e}")
-                
-                # Test GitHub configuration
-                st.write("**GitHub Configuration:**")
-                try:
-                    github_token = data_manager._get_secret('GITHUB_TOKEN')
-                    github_repo_owner = data_manager._get_secret('GITHUB_REPO_OWNER')
-                    github_repo_name = data_manager._get_secret('GITHUB_REPO_NAME')
-                    
-                    st.write(f"GITHUB_TOKEN: {'✅ Set' if github_token else '❌ Not set'}")
-                    st.write(f"GITHUB_REPO_OWNER: {'✅ ' + github_repo_owner if github_repo_owner else '❌ Not set'}")
-                    st.write(f"GITHUB_REPO_NAME: {'✅ ' + github_repo_name if github_repo_name else '❌ Not set'}")
-                    
-                    if all([github_token, github_repo_owner, github_repo_name]):
-                        st.write("✅ GitHub configuration complete")
-                    else:
-                        st.write("❌ GitHub configuration incomplete")
-                        
-                except Exception as e:
-                    st.write(f"Error checking GitHub config: {e}")
-                
-                # Test GitHub connection
-                if st.button("Test GitHub Connection"):
-                    try:
-                        # Try to get a simple file from GitHub
-                        test_result = data_manager._get_file_from_github("settings.json")
-                        if test_result[0] is not None:
-                            st.success("✅ GitHub connection successful!")
-                        else:
-                            st.warning("⚠️ GitHub connected but settings.json not found")
-                    except Exception as e:
-                        st.error(f"❌ GitHub connection failed: {e}")
-        
         if st.button("Logout"):
             auth_manager.logout()
     
@@ -159,7 +90,15 @@ def main():
     st.markdown("---")
     
     # Navigation
-    tab1, tab2, tab3 = st.tabs(["📊 LEADERBOARD", "⚽ DO PREDICTIONS", "📜 MY PREDICTIONS"])
+    tab_labels = ["📊 LEADERBOARD", "⚽ DO PREDICTIONS", "📜 MY PREDICTIONS"]
+    if auth_manager.is_admin():
+        tab_labels.append("🛠️ ADMIN")
+
+    tabs = st.tabs(tab_labels)
+    tab1 = tabs[0]
+    tab2 = tabs[1]
+    tab3 = tabs[2]
+    admin_tab = tabs[3] if auth_manager.is_admin() else None
     
     with tab1:
         display_leaderboard()
@@ -169,6 +108,84 @@ def main():
     
     with tab3:
         view_user_predictions(current_user['username'])
+
+    if admin_tab is not None:
+        with admin_tab:
+            admin_page()
+
+def admin_page():
+    """Main admin page content"""
+    st.header("🛠️ Administrator Dashboard")
+
+    st.markdown("### Admin Controls")
+    admin_panel()
+
+    st.markdown("### User Management")
+    user_management_panel()
+
+    st.markdown("### Fixtures Management")
+    fixtures_management_panel()
+
+    st.markdown("### Score Management")
+    score_management_panel()
+
+    st.markdown("### Results Management")
+    results_management_panel()
+
+    st.markdown("### Prediction Export")
+    prediction_export_panel()
+
+    st.markdown("### Front Page Settings")
+    front_page_management_panel()
+
+    with st.expander("🔧 Debug Info"):
+        if st.button("Reset Users File"):
+            if os.path.exists("users.json"):
+                os.remove("users.json")
+            config_manager.initialize_users()
+            st.success("Users file reset!")
+            st.rerun()
+
+        st.write("File status:")
+        st.write(f"users.json exists: {os.path.exists('users.json')}")
+
+        try:
+            users = config_manager.get_users()
+            st.write(f"Users loaded: {len(users)} users")
+            if "admin" in users:
+                st.write("✅ Admin user found")
+            else:
+                st.write("❌ Admin user not found")
+        except Exception as e:
+            st.write(f"Error loading users: {e}")
+
+        st.write("**GitHub Configuration:**")
+        try:
+            github_token = data_manager._get_secret('GITHUB_TOKEN')
+            github_repo_owner = data_manager._get_secret('GITHUB_REPO_OWNER')
+            github_repo_name = data_manager._get_secret('GITHUB_REPO_NAME')
+
+            st.write(f"GITHUB_TOKEN: {'✅ Set' if github_token else '❌ Not set'}")
+            st.write(f"GITHUB_REPO_OWNER: {'✅ ' + github_repo_owner if github_repo_owner else '❌ Not set'}")
+            st.write(f"GITHUB_REPO_NAME: {'✅ ' + github_repo_name if github_repo_name else '❌ Not set'}")
+
+            if all([github_token, github_repo_owner, github_repo_name]):
+                st.write("✅ GitHub configuration complete")
+            else:
+                st.write("❌ GitHub configuration incomplete")
+
+        except Exception as e:
+            st.write(f"Error checking GitHub config: {e}")
+
+        if st.button("Test GitHub Connection"):
+            try:
+                test_result = data_manager._get_file_from_github("settings.json")
+                if test_result[0] is not None:
+                    st.success("✅ GitHub connection successful!")
+                else:
+                    st.warning("⚠️ GitHub connected but settings.json not found")
+            except Exception as e:
+                st.error(f"❌ GitHub connection failed: {e}")
 
 def admin_panel():
     """Admin control panel"""
@@ -351,6 +368,63 @@ def results_management_panel():
                             st.error("Results were not properly saved to GitHub.")
                         else:
                             st.error("Please check your GitHub configuration in Streamlit secrets.")
+
+def fixtures_management_panel():
+    """Admin panel to input fixtures and save to GitHub"""
+    with st.expander("🗓️ Manage Fixtures"):
+        current_week = config_manager.get_current_week()
+
+        selected_week = st.selectbox(
+            "Select week to manage fixtures:",
+            range(1, 39),
+            index=current_week - 1
+        )
+
+        existing_fixtures = data_manager.load_fixtures(selected_week)
+        if existing_fixtures is not None and not existing_fixtures.empty:
+            st.info(f"Fixtures already exist for week {selected_week}. You can edit and re-save.")
+            fixtures_df = existing_fixtures.copy()
+        else:
+            st.write("No fixtures found for this week. Add them below.")
+            fixtures_df = pd.DataFrame(
+                {
+                    "home_team": [""] * 10,
+                    "away_team": [""] * 10
+                }
+            )
+
+        with st.form(f"fixtures_form_week_{selected_week}"):
+            edited_fixtures = st.data_editor(
+                fixtures_df,
+                use_container_width=True,
+                num_rows="dynamic",
+                column_config={
+                    "home_team": st.column_config.TextColumn("Home Team"),
+                    "away_team": st.column_config.TextColumn("Away Team")
+                }
+            )
+
+            save_clicked = st.form_submit_button("Save Fixtures")
+
+        if save_clicked:
+            try:
+                cleaned = edited_fixtures.copy()
+                cleaned["home_team"] = cleaned["home_team"].astype(str).str.strip()
+                cleaned["away_team"] = cleaned["away_team"].astype(str).str.strip()
+                cleaned = cleaned[(cleaned["home_team"] != "") & (cleaned["away_team"] != "")]
+
+                if cleaned.empty:
+                    st.warning("Please add at least one fixture before saving.")
+                    return
+
+                if cleaned["home_team"].isna().any() or cleaned["away_team"].isna().any():
+                    st.warning("Please fill in both home and away teams for each fixture.")
+                    return
+
+                data_manager.save_fixtures(selected_week, cleaned)
+                st.success(f"Fixtures saved for week {selected_week}!")
+            except Exception as e:
+                st.error(f"Error saving fixtures: {e}")
 
 def score_management_panel():
     """Admin panel to manually adjust user scores"""
@@ -658,38 +732,43 @@ def front_page_management_panel():
             current_blurb = config_manager.get_front_page_blurb()
         except:
             current_blurb = ""
-        
-        # Text area for the blurb
-        new_blurb = st.text_area(
-            "Front page message:",
-            value=current_blurb,
-            height=100,
-            help="This message will appear on the login page. Leave empty to show no message."
-        )
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Save Message"):
-                try:
-                    config_manager.set_front_page_blurb(new_blurb)
-                    st.success("Front page message updated!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error saving message: {e}")
-        
-        with col2:
-            if st.button("Clear Message"):
-                try:
-                    config_manager.set_front_page_blurb("")
-                    st.success("Front page message cleared!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error clearing message: {e}")
-        
+
+        if "front_page_blurb_draft" not in st.session_state:
+            st.session_state.front_page_blurb_draft = current_blurb
+
+        with st.form("front_page_blurb_form", clear_on_submit=False):
+            new_blurb = st.text_area(
+                "Front page message:",
+                key="front_page_blurb_draft",
+                height=100,
+                help="This message will appear on the login page. Leave empty to show no message."
+            )
+
+            col1, col2 = st.columns(2)
+            with col1:
+                save_clicked = st.form_submit_button("Save Message")
+            with col2:
+                clear_clicked = st.form_submit_button("Clear Message")
+
+        if save_clicked:
+            try:
+                config_manager.set_front_page_blurb(new_blurb)
+                st.success("Front page message updated!")
+            except Exception as e:
+                st.error(f"Error saving message: {e}")
+
+        if clear_clicked:
+            try:
+                config_manager.set_front_page_blurb("")
+                st.session_state.front_page_blurb_draft = ""
+                st.success("Front page message cleared!")
+            except Exception as e:
+                st.error(f"Error clearing message: {e}")
+
         # Preview
-        if new_blurb:
+        if st.session_state.get("front_page_blurb_draft"):
             st.write("**Preview:**")
-            st.info(new_blurb)
+            st.info(st.session_state.front_page_blurb_draft)
 
 def display_leaderboard():
     """Display the leaderboard"""
